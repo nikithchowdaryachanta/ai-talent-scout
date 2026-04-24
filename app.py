@@ -35,12 +35,6 @@ st.markdown("### AI-Powered Talent Scouting & Engagement Agent")
 st.sidebar.header("⚙️ Settings")
 num_candidates = st.sidebar.slider("Number of Candidates", 1, 5, 3)
 
-# Debug (optional)
-if st.sidebar.checkbox("Show API Debug (Safe)"):
-    st.sidebar.write("API Key Loaded:", bool(api_key))
-    if api_key:
-        st.sidebar.write("Preview:", api_key[:4] + "****" + api_key[-4:])
-
 # -----------------------------
 # 📄 JD INPUT
 # -----------------------------
