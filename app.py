@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from pathlib import Path
 
 import google.generativeai as genai
 import streamlit as st
@@ -187,11 +188,18 @@ Candidate profile: {candidate}
 # -----------------------------
 # 🔐 API KEY + MODEL
 # -----------------------------
+project_root = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=project_root / ".env")
+
 try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    api_key = st.secrets.get("GOOGLE_API_KEY", "")
 except Exception:
-    load_dotenv()
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = ""
+
+if not api_key:
+    api_key = os.getenv("GOOGLE_API_KEY", "")
+
+api_key = str(api_key).strip().strip('"').strip("'")
 
 if not api_key:
     st.error("❌ API Key not found. Add GOOGLE_API_KEY to Streamlit secrets or local .env")
