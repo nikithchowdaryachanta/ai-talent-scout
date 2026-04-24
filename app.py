@@ -44,13 +44,6 @@ def safe_model_json(prompt, fallback):
         return fallback
 
 
-def safe_model_text(prompt, fallback):
-    try:
-        return model.generate_content(prompt).text
-    except Exception:
-        return fallback
-
-
 def parse_jd(jd_text):
     prompt = f"""
 Extract structured hiring requirements from the Job Description.
