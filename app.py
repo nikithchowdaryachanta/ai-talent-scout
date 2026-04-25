@@ -209,37 +209,60 @@ def display_final_score(row, feedback_map):
     return clamp_score(row["final_score"] + adj * 3)
 
 
+def _latin1_pdf_text(value, max_len=80):
+    """FPDF core fonts need Latin-1-safe strings for reliable PDF bytes."""
+    text = str(value or "")[:max_len]
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
+def _ensure_download_bytes(data):
+    """Streamlit download_button requires bytes (or str); fpdf2 may return bytearray/memoryview."""
+    if data is None:
+        return None
+    if isinstance(data, bytes):
+        return data
+    if isinstance(data, bytearray):
+        return bytes(data)
+    if isinstance(data, memoryview):
+        return data.tobytes()
+    if isinstance(data, str):
+        return data.encode("utf-8")
+    return bytes(data)
+
+
 def build_shortlist_pdf(rows, jd_title, feedback_map):
     if FPDF is None:
         return None
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "TalentScout AI - Shortlist Report", ln=True)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 6, f"Role context: {jd_title[:80]}", ln=True)
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(40, 8, "Name", border=1)
-    pdf.cell(25, 8, "Match", border=1)
-    pdf.cell(25, 8, "Interest", border=1)
-    pdf.cell(25, 8, "Final", border=1)
-    pdf.cell(40, 8, "Stage", border=1)
-    pdf.ln()
-    pdf.set_font("Helvetica", "", 9)
-    for row in rows[:30]:
-        fs = display_final_score(row, feedback_map)
-        pdf.cell(40, 7, (row["name"] or "")[:22], border=1)
-        pdf.cell(25, 7, str(row["match_score"]), border=1)
-        pdf.cell(25, 7, str(row["interest_score"]), border=1)
-        pdf.cell(25, 7, str(fs), border=1)
-        pdf.cell(40, 7, (row.get("pipeline_stage", "") or "")[:18], border=1)
+    try:
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, _latin1_pdf_text("TalentScout AI - Shortlist Report", 120), ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 6, _latin1_pdf_text(f"Role context: {jd_title}", 120), ln=True)
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(40, 8, "Name", border=1)
+        pdf.cell(25, 8, "Match", border=1)
+        pdf.cell(25, 8, "Interest", border=1)
+        pdf.cell(25, 8, "Final", border=1)
+        pdf.cell(40, 8, "Stage", border=1)
         pdf.ln()
-    out = pdf.output(dest="S")
-    if isinstance(out, str):
-        return out.encode("latin-1", errors="replace")
-    return out
+        pdf.set_font("Helvetica", "", 9)
+        for row in rows[:30]:
+            fs = display_final_score(row, feedback_map)
+            pdf.cell(40, 7, _latin1_pdf_text(row.get("name"), 22), border=1)
+            pdf.cell(25, 7, _latin1_pdf_text(row.get("match_score"), 8), border=1)
+            pdf.cell(25, 7, _latin1_pdf_text(row.get("interest_score"), 8), border=1)
+            pdf.cell(25, 7, _latin1_pdf_text(fs, 8), border=1)
+            pdf.cell(40, 7, _latin1_pdf_text(row.get("pipeline_stage", ""), 18), border=1)
+            pdf.ln()
+        out = pdf.output(dest="S")
+        raw = _ensure_download_bytes(out)
+        return raw if raw and len(raw) > 0 else None
+    except Exception:
+        return None
 
 
 def parse_jd(jd_text):
@@ -770,27 +793,32 @@ if results:
 
     dl1, dl2 = st.columns(2)
     with dl1:
-        st.download_button(
-            "Export CSV",
-            data=results_to_csv(filtered_display),
-            file_name="shortlist.csv",
-            mime="text/csv",
-            disabled=not filtered_display,
-        )
+        if filtered_display:
+            csv_bytes = _ensure_download_bytes(results_to_csv(filtered_display))
+            st.download_button(
+                "Export CSV",
+                data=csv_bytes,
+                file_name="shortlist.csv",
+                mime="text/csv",
+            )
+        else:
+            st.caption("CSV export appears when at least one candidate matches filters.")
     with dl2:
-        pdf_bytes = (
-            build_shortlist_pdf(filtered_display, jd_data.get("role", "Role"), feedback) if filtered_display else None
-        )
-        if pdf_bytes:
+        pdf_bytes = None
+        if filtered_display and FPDF is not None:
+            pdf_bytes = build_shortlist_pdf(filtered_display, jd_data.get("role", "Role"), feedback)
+            pdf_bytes = _ensure_download_bytes(pdf_bytes)
+        if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 0:
             st.download_button(
                 "Export PDF report",
                 data=pdf_bytes,
                 file_name="shortlist.pdf",
                 mime="application/pdf",
-                disabled=not filtered_display,
             )
+        elif FPDF is None:
+            st.caption("PDF: add **fpdf2** to requirements and redeploy.")
         else:
-            st.caption("PDF export: pip install fpdf2")
+            st.caption("PDF: could not build file (try ASCII-safe names or re-run).")
 
     tabs = st.tabs(
         [
