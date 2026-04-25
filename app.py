@@ -28,14 +28,14 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 
     :root {
-      --saas-bg-deep: #0e1117;
-      --saas-bg-main: #0e1117;
-      --saas-bg-panel: #1c1f26;
-      --saas-bg-panel-hover: #252830;
-      --saas-border: rgba(255, 255, 255, 0.08);
-      --saas-text-primary: #ffffff;
-      --saas-text-secondary: #a0a3bd;
-      --saas-text-muted: #6b6e8c;
+      --saas-bg-deep: #0a0c10;
+      --saas-bg-main: #0a0c10;
+      --saas-bg-panel: #141821;
+      --saas-bg-panel-hover: #1c2230;
+      --saas-border: rgba(255, 255, 255, 0.12);
+      --saas-text-primary: #f4f6ff;
+      --saas-text-secondary: #c4c8e0;
+      --saas-text-muted: #8b90ae;
       --saas-accent-blue: #4f8ef7;
       --saas-accent-blue-soft: rgba(79, 142, 247, 0.18);
       --saas-accent-green: #22c55e;
@@ -252,16 +252,44 @@ st.markdown(
     [data-testid="stDataFrame"] { border: 1px solid var(--saas-border); border-radius: 12px; }
 
     .insight-card {
-      background: var(--saas-bg-panel);
-      border: 1px solid var(--saas-border);
-      border-left: 4px solid var(--saas-accent-blue);
-      border-radius: 14px;
-      padding: 1.15rem 1.35rem;
-      margin: 0 0 1.25rem 0;
+      background: linear-gradient(145deg, #151a24 0%, #12161f 100%);
+      border: 1px solid rgba(79, 142, 247, 0.35);
+      border-left: 5px solid var(--saas-accent-blue);
+      border-radius: 16px;
+      padding: 1.25rem 1.45rem;
+      margin: 0 0 1.35rem 0;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
     }
-    .insight-card h4 { color: var(--saas-text-primary) !important; margin: 0 0 0.5rem 0; font-size: 1.05rem; }
+    .insight-card h4 { color: var(--saas-text-primary) !important; margin: 0 0 0.5rem 0; font-size: 1.12rem; letter-spacing: -0.02em; }
     .insight-card ul { color: var(--saas-text-secondary); margin: 0.35rem 0 0 1.1rem; padding: 0; line-height: 1.55; }
     .insight-card .sub { color: var(--saas-text-muted); font-size: 0.88rem; margin-top: 0.65rem; }
+    .reco-kpi {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--saas-border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      margin: 4px 8px 0 0;
+      font-size: 0.88rem;
+    }
+    .reco-kpi strong { color: var(--saas-text-primary) !important; font-weight: 700; }
+    .jd-coach-card {
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 0.85rem;
+    }
+    .jd-coach-card h5 { color: var(--saas-text-primary) !important; margin: 0 0 0.35rem 0; font-size: 0.95rem; }
+    .exp-mini-card {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--saas-border);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.65rem;
+    }
 
     </style>
     """,
@@ -312,13 +340,20 @@ def parse_list(value):
         merged = []
         for item in value:
             merged.extend(parse_list(item))
-        return [x for x in merged if str(x).strip()]
+        return [str(x).strip() for x in merged if str(x).strip()]
     if isinstance(value, dict):
         inner = value.get("skills") or value.get("name")
         return parse_list(inner) if inner is not None else []
     s = str(value).strip()
     if not s:
         return []
+    if s.startswith("[") and s.endswith("]"):
+        try:
+            inner = json.loads(s)
+            if isinstance(inner, list):
+                return parse_list(inner)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
     parts = [p.strip() for p in _SKILL_SPLIT_PATTERN.split(s) if p and str(p).strip()]
     if not parts:
         return [s]
@@ -326,7 +361,7 @@ def parse_list(value):
 
 
 def dedupe_skills_preserve_order(skills):
-    """Unique skills by normalized key; keep first-seen display spelling."""
+    """Unique skills by normalized key; keep first-seen display spelling (trimmed)."""
     seen = set()
     out = []
     for raw in skills or []:
@@ -334,7 +369,9 @@ def dedupe_skills_preserve_order(skills):
         if not k or k in seen:
             continue
         seen.add(k)
-        out.append(str(raw).strip())
+        disp = str(raw).strip()
+        if disp:
+            out.append(disp)
     return out
 
 
@@ -654,6 +691,9 @@ Job Description:
         "summary": "Could not parse JD reliably.",
     }
     parsed = safe_model_json(prompt, fallback)
+    for _k in ("role", "location", "work_mode", "seniority", "summary"):
+        if isinstance(parsed.get(_k), str):
+            parsed[_k] = parsed[_k].strip()
     parsed["must_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("must_have_skills")))
     parsed["nice_to_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("nice_to_have_skills")))
     if not parsed["must_have_skills"]:
@@ -701,11 +741,15 @@ def discover_candidates(pool, jd_data, max_results):
 
     for candidate in pool:
         cand_flat = dedupe_skills_preserve_order(parse_list(candidate.get("skills")))
-        matched_cnt = sum(1 for s in jd_must if skill_key_matches_jd_to_candidate(s, cand_flat))
-        must_ratio = matched_cnt / len(jd_must) if jd_must else 0.5
         exp_ok = candidate["experience_years"] >= min_years
+        if jd_must:
+            matched_cnt = sum(1 for s in jd_must if skill_key_matches_jd_to_candidate(s, cand_flat))
+            must_ratio = matched_cnt / len(jd_must)
+            discovery_score = (must_ratio * 70) + (30 if exp_ok else 10)
+        else:
+            # No must-haves extracted — do not assume fake skill overlap; gate mainly on experience
+            discovery_score = (55 if exp_ok else 28)
 
-        discovery_score = (must_ratio * 70) + (30 if exp_ok else 10)
         if discovery_score >= 40:
             shortlisted.append(candidate)
 
@@ -738,28 +782,34 @@ def render_jd_human_card(jd_data, discovered=None, *, show_pool_gap=False):
     miny = jd_data.get("min_experience_years", 0)
     maxy = jd_data.get("max_experience_years", 0) or 0
     exp_line = f"{miny}+ years" if maxy <= 0 else f"{miny}–{maxy} years"
-    must_disp = ", ".join(must) if must else "—"
+    must_disp = ", ".join(must) if must else "— none extracted — add a clear “Must have” list in the JD"
     nice_disp = ", ".join(nice) if nice else "—"
+    summ = (jd_data.get("summary") or "").strip()
+    summ_html = f'<p style="margin:10px 0 0 0;color:#c4c8e0;font-size:0.92rem;line-height:1.55;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">{html.escape(summ)}</p>' if summ else ""
+    senior = html.escape(str(jd_data.get("seniority") or "—"))
     gap_block = ""
     if show_pool_gap and discovered is not None:
         gap_must = jd_pool_skill_gaps(must, discovered)
         gap_block = f"""
   <p style="margin:12px 0 0 0;color:#fbbf24;font-size:0.92rem;">
-    ⚠ <strong style="color:#FFFFFF;">Pool gap (no candidate lists this):</strong>
+    ⚠ <strong style="color:#f4f6ff;">Pool gap (no profile in this pool lists):</strong>
     {html.escape(", ".join(gap_must) if gap_must else "— none detected in this pool")}
   </p>"""
     st.markdown(
         f"""
 <div class="ats-card" style="margin-bottom:1rem;">
-  <div class="ats-section-title">Parsed job (human view)</div>
-  <p style="margin:0 0 8px 0;color:#FFFFFF;font-size:1.2rem;font-weight:800;letter-spacing:-0.02em;">{html.escape(str(jd_data.get("role") or "—"))}</p>
-  <p style="margin:0;color:#A0A3BD;font-size:0.95rem;line-height:1.6;">
-    <strong style="color:#FFFFFF;">Experience:</strong> {html.escape(exp_line)}<br/>
-    <strong style="color:#FFFFFF;">Location / mode:</strong> {html.escape(str(jd_data.get("location") or "—"))}
+  <div class="ats-section-title">Role profile · parsed from JD</div>
+  <p style="margin:0 0 8px 0;color:#f4f6ff;font-size:1.2rem;font-weight:800;letter-spacing:-0.02em;">{html.escape(str(jd_data.get("role") or "—"))}</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+    <span class="ats-skill-pill" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.45);color:#86efac;">Seniority: {senior}</span>
+    <span class="ats-skill-pill">Experience band: {html.escape(exp_line)}</span>
+  </div>
+  <p style="margin:0;color:#c4c8e0;font-size:0.95rem;line-height:1.65;">
+    <strong style="color:#f4f6ff;">Where / how:</strong> {html.escape(str(jd_data.get("location") or "—"))}
     · {html.escape(str(jd_data.get("work_mode") or "—"))}<br/>
-    <strong style="color:#FFFFFF;">Must-have skills:</strong> {html.escape(must_disp)}<br/>
-    <strong style="color:#FFFFFF;">Nice-to-have:</strong> {html.escape(nice_disp)}
-  </p>{gap_block}
+    <strong style="color:#f4f6ff;">Must-have ({len(must)}):</strong> {html.escape(must_disp)}<br/>
+    <strong style="color:#f4f6ff;">Nice-to-have ({len(nice)}):</strong> {html.escape(nice_disp)}
+  </p>{summ_html}{gap_block}
 </div>
         """,
         unsafe_allow_html=True,
@@ -780,8 +830,9 @@ def score_match_with_explainability(jd_data, candidate):
     missing_must = sorted(missing_must, key=lambda x: normalize_skill_key(x))
     matched_nice = sorted(matched_nice, key=lambda x: normalize_skill_key(x))
 
-    must_ratio = len(matched_must) / len(must_f) if must_f else 0.6
-    nice_ratio = len(matched_nice) / len(nice_f) if nice_f else 0.5
+    # Ratios strictly from list overlap — never invent overlap when JD lists are empty
+    must_ratio = (len(matched_must) / len(must_f)) if must_f else 0.0
+    nice_ratio = (len(matched_nice) / len(nice_f)) if nice_f else 0.0
     min_y = jd_data.get("min_experience_years", 0) or 0
     max_y = jd_data.get("max_experience_years", 0) or 0
     cand_y = int(candidate.get("experience_years", 0) or 0)
@@ -809,7 +860,7 @@ def score_match_with_explainability(jd_data, candidate):
             exp_ratio = max(0.35, cand_y / max(1, min_y))
             exp_range_note = f"Under minimum ({min_y} yrs); flagged for hiring manager judgment."
 
-    skill_overlap_pct = clamp_score(must_ratio * 100)
+    skill_overlap_pct = clamp_score(must_ratio * 100) if must_f else 0
     experience_fit_pct = clamp_score(exp_ratio * 100)
     loc_score, loc_note = location_compatibility_score(
         jd_data.get("location"), candidate.get("location"), jd_data.get("work_mode")
@@ -825,7 +876,13 @@ def score_match_with_explainability(jd_data, candidate):
         else "Consider title vs role alignment for domain fit."
     )
 
-    base_match = clamp_score((must_ratio * 50) + (nice_ratio * 20) + (exp_ratio * 15) + (loc_score / 100 * 15))
+    # When JD has no skill lists, weight experience + location more so scores stay interpretable
+    if must_f or nice_f:
+        base_match = clamp_score(
+            (must_ratio * 50) + (nice_ratio * 20) + (exp_ratio * 15) + (loc_score / 100 * 15)
+        )
+    else:
+        base_match = clamp_score((exp_ratio * 40) + (loc_score / 100 * 30))
 
     # Explicit location / experience modifiers (penalty for mismatch, small bonus when both strong)
     loc_penalty_pts = max(0, min(14, int(round((62 - loc_score) * 0.26))))
@@ -876,6 +933,9 @@ Base match score (after alignment): {base_match}
         },
     )
     adjustment = int(explain_json.get("match_score_adjustment", 0))
+    # Prevent LLM nudge from contradicting zero must-have overlap when the JD defines must-haves
+    if must_f and not matched_must:
+        adjustment = min(adjustment, 0)
     final_match = clamp_score(base_match + adjustment)
 
     explainability = {
@@ -887,7 +947,7 @@ Base match score (after alignment): {base_match}
         "llm_adjustment": adjustment,
         "reason": explain_json.get("explanation", ""),
         "skill_overlap_pct": skill_overlap_pct,
-        "nice_overlap_pct": clamp_score(nice_ratio * 100),
+        "nice_overlap_pct": clamp_score(nice_ratio * 100) if nice_f else 0,
         "experience_fit_pct": experience_fit_pct,
         "location_fit_pct": loc_score,
         "location_note": loc_note,
@@ -963,15 +1023,23 @@ def build_ranking_summary(rows, feedback_map, jd_data):
     """Human-readable why #1 leads (no extra LLM call)."""
     if not rows:
         return ""
-    leader = rows[0]
     fs = lambda r: display_final_score(r, feedback_map)
+    leader = max(rows, key=fs)
+    e = leader.get("explainability") or {}
+    jn = int(e.get("jd_must_skill_count", 0) or 0)
+    mm = e.get("matched_must_have") or []
+    overlap_line = (
+        f"**Must-have coverage (#1):** {len(mm)}/{jn} JD skills matched · overlap **{e.get('skill_overlap_pct', 0)}%**."
+        if jn
+        else "**Must-have coverage:** no must-have list in the parsed JD — compare skills manually."
+    )
     lines = [
         f"**#{1} — {leader['name']}** leads with final score **{fs(leader)}** "
-        f"(match {leader['match_score']}, interest {leader['interest_score']})."
+        f"(match **{leader['match_score']}**, interest **{leader['interest_score']}**).",
+        overlap_line,
     ]
-    e = leader.get("explainability") or {}
     drivers = []
-    if e.get("skill_overlap_pct", 0) >= 65:
+    if jn and e.get("skill_overlap_pct", 0) >= 65:
         drivers.append("strong must-have skill overlap")
     if e.get("experience_fit_pct", 0) >= 75:
         drivers.append("solid experience fit vs the JD range")
@@ -986,10 +1054,11 @@ def build_ranking_summary(rows, feedback_map, jd_data):
         "(set in sidebar)."
     )
     if len(rows) > 1:
-        s2 = rows[1]
+        rest = sorted([r for r in rows if r.get("name") != leader.get("name")], key=fs, reverse=True)
+        s2 = rest[0]
         gap = fs(leader) - fs(s2)
         lines.append(
-            f"**vs #2 ({s2['name']}, {fs(s2)}):** gap of **{gap}** points — "
+            f"**vs next ({s2['name']}, {fs(s2)}):** gap of **{gap}** points — "
             f"usually from a mix of match detail, interest signal, and recruiter feedback nudges."
         )
     return "\n\n".join(lines)
@@ -998,7 +1067,7 @@ def build_ranking_summary(rows, feedback_map, jd_data):
 def _format_skill_phrase(skills):
     if not skills:
         return "—"
-    return ", ".join(str(s).strip().title() for s in skills if str(s).strip())
+    return ", ".join(str(s).strip() for s in skills if str(s).strip())
 
 
 def _traffic_color(score):
@@ -1032,45 +1101,50 @@ def render_top_candidate_insight(rows, feedback_map, jd_data):
     fs = display_final_score(top, feedback_map)
     exp = top.get("explainability") or {}
     mm = exp.get("matched_must_have") or []
-    skill_short = _format_skill_phrase(mm[:6]) if mm else "per JD must-haves"
-    bullets = []
-    if mm:
-        bullets.append(f"Strong skill match ({skill_short})")
-    elif exp.get("skill_overlap_pct", 0) >= 55:
-        bullets.append("Solid skill match vs the JD profile")
-    if exp.get("experience_fit_pct", 0) >= 65:
-        bullets.append("Experience aligned with the role")
-    else:
-        bullets.append("Experience vs JD reviewed — see candidate card for detail")
-    if exp.get("location_fit_pct", 0) >= 65:
-        bullets.append("Location / work mode fits the JD")
-    if top.get("interest_score", 0) >= 65:
-        bullets.append("High interest score from outreach simulation")
-    elif top.get("interest_score", 0) >= 45:
-        bullets.append("Moderate interest — worth a screening call")
-    bullets = bullets[:5]
+    miss = exp.get("missing_must_have") or []
+    jd_must_n = int(exp.get("jd_must_skill_count", 0) or 0)
+    skill_short = _format_skill_phrase(mm[:8]) if mm else "—"
     reason = html.escape(str(top.get("interest_reason", "") or "").strip())
-    matched = _format_skill_phrase(mm) if mm else "None"
+    matched = _format_skill_phrase(mm) if mm else ("—" if jd_must_n else "N/A (no JD must-haves)")
+    missing_preview = _format_skill_phrase(miss[:6]) if miss else "—"
     mc = _traffic_color(top.get("match_score", 0))
     ic = _traffic_color(top.get("interest_score", 0))
     fc = _traffic_color(fs)
-    bullets_html = "".join(f"<li>{html.escape(b)}</li>" for b in bullets)
+    bullets_plain = []
+    if jd_must_n == 0:
+        bullets_plain.append("Parsed JD has no must-have skill list — use profile + interview to validate fit.")
+    elif mm:
+        bullets_plain.append(f"Covers {len(mm)}/{jd_must_n} JD must-haves: {skill_short}.")
+    else:
+        bullets_plain.append(f"0/{jd_must_n} JD must-haves on profile — technical gap vs this JD; match score reflects that.")
+    if exp.get("experience_fit_pct", 0) >= 65:
+        bullets_plain.append("Experience band lines up with the JD.")
+    else:
+        bullets_plain.append("Experience vs JD: see range note on the candidate card.")
+    if exp.get("location_fit_pct", 0) >= 65:
+        bullets_plain.append("Location / work mode is compatible with the JD.")
+    if top.get("interest_score", 0) >= 65:
+        bullets_plain.append("Simulated outreach: strong interest / availability signal.")
+    elif top.get("interest_score", 0) >= 45:
+        bullets_plain.append("Simulated outreach: moderate interest — still worth a screen.")
+    bullets_plain = bullets_plain[:5]
+    bullets_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(b)}</li>" for b in bullets_plain)
     st.markdown(
         f"""
 <div class="insight-card">
-  <h4>🏆 Recommended Candidate: {html.escape(str(top.get("name", "")))}</h4>
-  <p style="margin:4px 0 0 0;color:#A0A3BD;font-size:0.92rem;">
-    <span style="color:#FFFFFF;font-weight:600;">Final score:</span>
-    <span style="color:{fc};font-weight:800;font-size:1.15rem;"> {fs}</span>
-    &nbsp;&nbsp;|&nbsp;&nbsp;
-    <span style="color:#FFFFFF;font-weight:600;">Match:</span> <span style="color:{mc};font-weight:800;">{top.get("match_score", "—")}</span>
-    &nbsp;&nbsp;|&nbsp;&nbsp;
-    <span style="color:#FFFFFF;font-weight:600;">Interest:</span> <span style="color:{ic};font-weight:800;">{top.get("interest_score", "—")}</span>
-  </p>
-  <p style="margin:14px 0 6px 0;color:#FFFFFF;font-size:0.9rem;font-weight:700;">Why?</p>
-  <ul style="list-style:disc;color:#A0A3BD;margin:0;padding-left:1.2rem;line-height:1.6;">{bullets_html}</ul>
-  <p class="sub">Matched JD skills: {matched}</p>
-  {f'<p class="sub">Signal: {reason}</p>' if reason else ''}
+  <div class="ats-section-title" style="margin-bottom:6px;">Recommended candidate</div>
+  <h4 style="margin:0 0 10px 0;">{html.escape(str(top.get("name", "")))} · {html.escape((str(top.get("title") or ""))[:56])}</h4>
+  <div style="margin-bottom:12px;">
+    <span class="reco-kpi"><strong>Final</strong> <span style="color:{fc};font-weight:800;">{fs}</span></span>
+    <span class="reco-kpi"><strong>Match</strong> <span style="color:{mc};font-weight:800;">{top.get("match_score", "—")}</span></span>
+    <span class="reco-kpi"><strong>Interest</strong> <span style="color:{ic};font-weight:800;">{top.get("interest_score", "—")}</span></span>
+    <span class="reco-kpi"><strong>Must-haves</strong> <span style="color:#c4c8e0;">{len(mm)}/{jd_must_n if jd_must_n else "—"}</span></span>
+  </div>
+  <p style="margin:0 0 6px 0;color:#f4f6ff;font-size:0.82rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Why this pick</p>
+  <ul style="list-style:disc;color:#c4c8e0;margin:0;padding-left:1.15rem;line-height:1.55;font-size:0.93rem;">{bullets_html}</ul>
+  <p class="sub"><strong style="color:#86efac;">Matched</strong> {html.escape(matched)}</p>
+  <p class="sub"><strong style="color:#fca5a5;">Still missing</strong> {html.escape(missing_preview)}</p>
+  {f'<p class="sub"><strong style="color:#f4f6ff;">Outreach read</strong> — {reason}</p>' if reason else ''}
 </div>
         """,
         unsafe_allow_html=True,
@@ -1080,9 +1154,9 @@ def render_top_candidate_insight(rows, feedback_map, jd_data):
 def passes_skill_refine(row, selected_skills):
     if not selected_skills:
         return True
-    blob = " ".join(row.get("skills", [])).lower()
+    cand_displays = list(row.get("skills") or [])
     for need in selected_skills:
-        if need.lower() not in blob:
+        if not skill_key_matches_jd_to_candidate(need, cand_displays):
             return False
     return True
 
@@ -1113,11 +1187,15 @@ def render_profile_card(item, rank, final_display_score):
     jd_must_n = int(exp.get("jd_must_skill_count", -1))
     if jd_must_n < 0:
         jd_must_n = len(matched_must) + len(missing_must)
+    overlap_badge = ""
+    if jd_must_n > 0:
+        pct = exp.get("skill_overlap_pct", int(round(100 * len(matched_must) / jd_must_n)))
+        overlap_badge = f"""<span class="ats-skill-pill" style="margin-bottom:10px;background:rgba(79,142,247,0.15);border-color:rgba(127,168,249,0.5);color:#c8d9ff;">Must-have overlap: {len(matched_must)}/{jd_must_n} · {pct}%</span>"""
     if jd_must_n == 0:
-        matched_txt = "None (no must-have skills in JD — add a clear Must have list and re-run)"
-        missing_txt = "None"
+        matched_txt = "— (no must-have skills extracted from JD — refine the JD and re-run)"
+        missing_txt = "—"
     else:
-        matched_txt = _format_skill_phrase(matched_must) if matched_must else "None"
+        matched_txt = _format_skill_phrase(matched_must) if matched_must else "None — profile does not list these JD must-haves"
         miss_show = missing_must[:12]
         missing_txt = _format_skill_phrase(miss_show) if miss_show else "None"
         if missing_must and len(missing_must) > 12:
@@ -1130,31 +1208,34 @@ def render_profile_card(item, rank, final_display_score):
     card = f"""
 <div class="ats-card">
   <div class="ats-section-title">Rank #{rank} · {html.escape(jd_yr_txt)}</div>
-  <div style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;color:#FFFFFF;line-height:1.2;margin-bottom:4px;">👤 {name_line}</div>
-  <div style="color:#A0A3BD;font-size:0.88rem;margin-bottom:10px;">{title_line}</div>
-  <div style="color:#FFFFFF;font-size:1rem;font-weight:600;margin-bottom:16px;line-height:1.5;">
-    📍 {loc_line} &nbsp;|&nbsp; ⏳ {yr} yrs
+  <div style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:#f4f6ff;line-height:1.2;margin-bottom:4px;">{name_line}</div>
+  <div style="color:#c4c8e0;font-size:0.88rem;margin-bottom:10px;">{title_line}</div>
+  <div style="color:#f4f6ff;font-size:0.95rem;font-weight:600;margin-bottom:12px;line-height:1.5;">
+    {loc_line} · {yr} yrs experience
   </div>
-  <div style="margin-bottom:8px;font-size:1.02rem;">
-    <span style="color:#FFFFFF;font-weight:600;">Match Score:</span>
-    <span style="color:{match_c};font-weight:800;font-size:1.35rem;"> {match_s}</span>
+  {overlap_badge}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#8b90ae;font-weight:700;">Match</div>
+      <div style="color:{match_c};font-weight:800;font-size:1.45rem;line-height:1.2;">{match_s}</div>
+    </div>
+    <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#8b90ae;font-weight:700;">Interest</div>
+      <div style="color:{interest_c};font-weight:800;font-size:1.45rem;line-height:1.2;">{interest_s}</div>
+    </div>
   </div>
-  <div style="margin-bottom:14px;font-size:1.02rem;">
-    <span style="color:#FFFFFF;font-weight:600;">Interest Score:</span>
-    <span style="color:{interest_c};font-weight:800;font-size:1.35rem;"> {interest_s}</span>
+  <div style="margin-bottom:16px;font-size:1rem;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.1);">
+    <span style="color:#f4f6ff;font-weight:600;">Final score</span>
+    <span style="color:{final_c};font-weight:800;font-size:1.4rem;"> {final_display_score}</span>
+    <span style="color:#8b90ae;font-size:0.78rem;margin-left:8px;">Exp fit {exp_fit}% · Loc {loc_fit}%</span>
   </div>
-  <div style="margin-bottom:16px;font-size:1rem;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);">
-    <span style="color:#FFFFFF;font-weight:600;">Final score:</span>
-    <span style="color:{final_c};font-weight:800;font-size:1.35rem;"> {final_display_score}</span>
-    <span style="color:#6b6e8c;font-size:0.78rem;margin-left:8px;">(exp fit {exp_fit}% · loc fit {loc_fit}%)</span>
+  <div style="font-size:0.92rem;line-height:1.55;margin-bottom:8px;padding:10px;border-radius:10px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);">
+    <span style="color:#86efac;font-weight:700;">Matched</span>
+    <span style="color:#c4c8e0;"> {matched_txt}</span>
   </div>
-  <div style="font-size:0.98rem;line-height:1.55;margin-bottom:8px;">
-    <span style="color:#22C55E;">✔</span> <span style="color:#FFFFFF;font-weight:600;">Matched Skills:</span>
-    <span style="color:#A0A3BD;"> {matched_txt}</span>
-  </div>
-  <div style="font-size:0.98rem;line-height:1.55;margin-bottom:10px;">
-    <span style="color:#EF4444;">❌</span> <span style="color:#FFFFFF;font-weight:600;">Missing Skills:</span>
-    <span style="color:#A0A3BD;"> {missing_txt}</span>
+  <div style="font-size:0.92rem;line-height:1.55;margin-bottom:10px;padding:10px;border-radius:10px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.22);">
+    <span style="color:#fca5a5;font-weight:700;">Missing</span>
+    <span style="color:#c4c8e0;"> {missing_txt}</span>
   </div>
   {yr_warn}
   <div style="font-size:0.84rem;color:#6b6e8c;line-height:1.45;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">{sum_line}</div>
@@ -1208,6 +1289,17 @@ st.caption(
     "Production-grade talent intelligence — explainable matching, resume ingestion, "
     "ATS pipeline, analytics, and JD coaching in one workspace."
 )
+
+_release_notes_path = project_root / "RELEASE_NOTES.md"
+try:
+    _release_notes_md = _release_notes_path.read_text(encoding="utf-8")
+except OSError:
+    _release_notes_md = (
+        "**Release notes** could not be loaded. Add `RELEASE_NOTES.md` next to `app.py`, "
+        "or open that file in the repository for the full changelog."
+    )
+with st.expander("Release notes", expanded=False):
+    st.markdown(_release_notes_md)
 
 st.sidebar.header("Controls")
 num_candidates = st.sidebar.slider("Shortlist size", 1, 12, 6)
@@ -1428,13 +1520,15 @@ def passes_filters(row):
         if exp.get("missing_must_have"):
             return False
     if filter_skill:
-        blob = (row["title"] + row["candidate_summary"]).lower()
+        exp = row.get("explainability") or {}
+        cand_skills = []
         for c in discovered:
             if c["name"] == row["name"]:
-                blob += " " + " ".join(c.get("skills", [])).lower()
-        exp = row.get("explainability") or {}
-        blob += " " + " ".join(exp.get("matched_must_have", [])).lower()
-        if filter_skill.lower() not in blob:
+                cand_skills = list(c.get("skills") or [])
+                break
+        combined_skills = cand_skills + list(exp.get("matched_must_have") or [])
+        blob = (row["title"] + " " + row["candidate_summary"]).lower()
+        if not skill_key_matches_jd_to_candidate(filter_skill, combined_skills) and filter_skill.lower() not in blob:
             return False
     if filter_title and filter_title.lower() not in row["title"].lower():
         return False
@@ -1466,8 +1560,13 @@ if results:
     def display_score(row):
         return display_final_score(row, feedback)
 
+    filtered_display.sort(key=display_score, reverse=True)
+
     if not filtered_display:
         st.warning("No candidates match your sidebar filters. Clear filters or widen experience range.")
+
+    if filtered_display:
+        render_top_candidate_insight(filtered_display, feedback, jd_data)
 
     avg_m = avg_i = avg_f = 0.0
     top = None
@@ -1488,9 +1587,6 @@ if results:
     d4.metric("Avg interest", round(avg_i, 1) if filtered_display else "—")
     d5.metric("Avg final (view)", round(avg_f, 1) if filtered_display else "—")
     d6.metric("Top skill", str(top_skill)[:20] + ("…" if len(str(top_skill)) > 20 else ""))
-
-    if filtered_display:
-        render_top_candidate_insight(filtered_display, feedback, jd_data)
 
     dl1, dl2 = st.columns(2)
     with dl1:
@@ -1616,56 +1712,64 @@ if results:
                     st.divider()
 
     with tabs[1]:
+        st.caption("Fit breakdown — percentages match the same logic as the headline match score.")
         for item in filtered_display:
             exp = item["explainability"]
-            st.markdown(f"### {item['name']}")
+            st.markdown(f"#### {item['name']}")
             g1, g2, g3, g4 = st.columns(4)
-            g1.metric("Must-have overlap %", exp.get("skill_overlap_pct", 0))
-            g2.metric("Nice-to-have %", exp.get("nice_overlap_pct", 0))
-            g3.metric("Experience fit %", exp.get("experience_fit_pct", 0))
-            g4.metric("Location fit %", exp.get("location_fit_pct", 0))
+            g1.metric("Must-have overlap", f"{exp.get('skill_overlap_pct', 0)}%")
+            g2.metric("Nice-to-have", f"{exp.get('nice_overlap_pct', 0)}%")
+            g3.metric("Experience fit", f"{exp.get('experience_fit_pct', 0)}%")
+            g4.metric("Location fit", f"{exp.get('location_fit_pct', 0)}%")
             st.bar_chart(
                 pd.DataFrame(
                     {
                         "Metric": ["Must skills", "Nice skills", "Experience", "Location"],
                         "Score": [
-                                    exp.get("skill_overlap_pct", 0),
-                                    exp.get("nice_overlap_pct", 0),
-                                    exp.get("experience_fit_pct", 0),
-                                    exp.get("location_fit_pct", 0),
-                                ],
+                            exp.get("skill_overlap_pct", 0),
+                            exp.get("nice_overlap_pct", 0),
+                            exp.get("experience_fit_pct", 0),
+                            exp.get("location_fit_pct", 0),
+                        ],
                     }
                 ).set_index("Metric")
             )
             lp, ep, ab = exp.get("loc_penalty_pts", 0), exp.get("exp_penalty_pts", 0), exp.get("alignment_bonus_pts", 0)
             if lp or ep or ab:
                 st.caption(
-                    f"Location / experience shaping in match score: −{lp} pts location gap, "
-                    f"−{ep} pts experience gap, +{ab} pts strong-alignment bonus."
+                    f"Score shaping: −{lp} location, −{ep} experience, +{ab} alignment bonus (see match score on card)."
                 )
-            st.write("**Narrative:**", exp.get("reason", ""))
-            st.write("**Domain:**", exp.get("domain_relevance_note", ""))
-            st.write("**Experience (range vs JD):**", exp.get("experience_range_note", ""))
-            st.write("**Experience (detail):**", exp.get("experience_alignment_note", ""))
-            st.write("**Location / mode:**", exp.get("location_work_mode_note", ""))
-            st.write(
-                "**Matched must-have:**",
-                ", ".join(exp["matched_must_have"]) if exp["matched_must_have"] else "None",
+            mm = exp.get("matched_must_have") or []
+            miss = exp.get("missing_must_have") or []
+            jn = int(exp.get("jd_must_skill_count", 0) or 0)
+            st.markdown(
+                f"""
+<div class="exp-mini-card">
+  <p style="margin:0 0 8px 0;color:#f4f6ff;font-weight:700;font-size:0.88rem;">Summary</p>
+  <p style="margin:0;color:#c4c8e0;font-size:0.9rem;line-height:1.55;">{html.escape(str(exp.get("reason") or ""))}</p>
+  <p style="margin:10px 0 4px 0;color:#8b90ae;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;">Skills vs JD</p>
+  <p style="margin:0;color:#86efac;font-size:0.88rem;"><strong>Matched ({len(mm)}/{jn if jn else "—"})</strong> {html.escape(_format_skill_phrase(mm))}</p>
+  <p style="margin:6px 0 0 0;color:#fca5a5;font-size:0.88rem;"><strong>Missing</strong> {html.escape(_format_skill_phrase(miss))}</p>
+</div>
+<div class="exp-mini-card">
+  <p style="margin:0;color:#c4c8e0;font-size:0.88rem;line-height:1.5;"><strong style="color:#f4f6ff;">Domain</strong> {html.escape(str(exp.get("domain_relevance_note") or ""))}</p>
+  <p style="margin:8px 0 0 0;color:#c4c8e0;font-size:0.88rem;"><strong style="color:#f4f6ff;">Experience</strong> {html.escape(str(exp.get("experience_range_note") or ""))}</p>
+  <p style="margin:6px 0 0 0;color:#c4c8e0;font-size:0.88rem;">{html.escape(str(exp.get("experience_alignment_note") or ""))}</p>
+  <p style="margin:8px 0 0 0;color:#c4c8e0;font-size:0.88rem;"><strong style="color:#f4f6ff;">Location</strong> {html.escape(str(exp.get("location_work_mode_note") or ""))}</p>
+</div>
+                """,
+                unsafe_allow_html=True,
             )
-            st.write(
-                "**Missing must-have:**",
-                ", ".join(exp["missing_must_have"]) if exp["missing_must_have"] else "None",
-            )
-            with st.expander("Outreach transcript"):
+            with st.expander("Outreach transcript (simulated)"):
                 for line in item["conversation"]:
-                    st.write(line)
-                st.markdown("**Signals (simulated)**")
+                    st.markdown(f"- {line}")
+                st.markdown("**Signals**")
                 sig = item.get("signals") or {}
                 if isinstance(sig, dict):
                     for k, v in sig.items():
                         st.markdown(f"- **{html.escape(str(k))}:** {html.escape(str(v))}")
                 else:
-                    st.write(sig)
+                    st.caption("No structured signals returned.")
             st.divider()
 
     with tabs[2]:
@@ -1727,16 +1831,46 @@ if results:
         else:
             if jd_data.get("role"):
                 render_jd_human_card(jd_data, discovered=None, show_pool_gap=False)
-            st.markdown("#### Coaching & gaps")
-            st.metric("JD clarity score (model)", sug.get("overall_clarity_score", "—"))
-            for s in sug.get("suggestions", [])[:12]:
-                st.markdown(f"- **{s.get('type', 'tip')}**: {s.get('message', '')}")
-            st.markdown("**Missing / vague**")
-            for m in sug.get("missing_or_vague_items", []):
-                st.write(f"- {m}")
-            st.markdown("**Suggested must-have additions**")
-            for m in sug.get("recommended_must_have_additions", []):
-                st.write(f"- {m}")
+            clarity = sug.get("overall_clarity_score", "—")
+            st.markdown(
+                f"""
+<div class="jd-coach-card" style="border-left:4px solid #4f8ef7;">
+  <h5>JD clarity</h5>
+  <p style="margin:0;font-size:1.75rem;font-weight:800;color:#7eb0ff;">{html.escape(str(clarity))}<span style="font-size:0.95rem;color:#8b90ae;font-weight:600;"> / 100</span></p>
+  <p style="margin:6px 0 0 0;color:#8b90ae;font-size:0.85rem;">Higher = clearer expectations for candidates and better automated matching.</p>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+            sug_lines = "".join(
+                f'<p style="margin:0 0 8px 0;color:#c4c8e0;font-size:0.9rem;line-height:1.5;">'
+                f'<span style="color:#7eb0ff;font-weight:700;">{html.escape(str(s.get("type", "tip")).upper())}</span> — '
+                f'{html.escape(str(s.get("message", "")))}</p>'
+                for s in (sug.get("suggestions") or [])[:10]
+            )
+            st.markdown(
+                f'<div class="jd-coach-card"><h5>Improvements</h5>{sug_lines or "<p style=color:#8b90ae>No suggestions returned.</p>"}</div>',
+                unsafe_allow_html=True,
+            )
+            miss_items = sug.get("missing_or_vague_items") or []
+            add_items = sug.get("recommended_must_have_additions") or []
+            st.markdown(
+                f"""
+<div class="jd-coach-card">
+  <h5>Still vague or missing</h5>
+  <ul style="margin:0;padding-left:1.1rem;color:#c4c8e0;line-height:1.55;font-size:0.9rem;">
+    {"".join(f"<li>{html.escape(str(m))}</li>" for m in miss_items[:12]) or "<li>Nothing flagged</li>"}
+  </ul>
+</div>
+<div class="jd-coach-card">
+  <h5>Suggested must-have lines</h5>
+  <ul style="margin:0;padding-left:1.1rem;color:#c4c8e0;line-height:1.55;font-size:0.9rem;">
+    {"".join(f"<li>{html.escape(str(m))}</li>" for m in add_items[:12]) or "<li>No additions suggested</li>"}
+  </ul>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     with tabs[5]:
         st.subheader("JD analysis & discovery pool")
@@ -1744,19 +1878,42 @@ if results:
             st.info("Run the agent to parse the JD and load the discovery pool.")
         else:
             render_jd_human_card(jd_data, discovered, show_pool_gap=True)
-            st.markdown(f"**Summary:** {jd_data.get('summary', '')}")
-            st.markdown(f"**Discovered candidates ({len(discovered)}):**")
+            summ = (jd_data.get("summary") or "").strip()
+            if summ:
+                st.markdown(
+                    f'<div class="jd-coach-card"><h5>Role in one glance</h5><p style="margin:0;color:#c4c8e0;line-height:1.55;">{html.escape(summ)}</p></div>',
+                    unsafe_allow_html=True,
+                )
+            st.markdown(
+                f'<p style="color:#8b90ae;font-size:0.85rem;margin:0 0 10px 0;">Discovery pool · <strong style="color:#f4f6ff;">{len(discovered)}</strong> profiles</p>',
+                unsafe_allow_html=True,
+            )
             if not discovered:
-                st.caption("No rows in the discovery pool for this run.")
+                st.caption("No candidates met the discovery gate for this run.")
             else:
                 for c in discovered:
-                    sk = ", ".join((c.get("skills") or [])[:8])
-                    st.markdown(
-                        f"- **{c.get('name', '')}** — _{c.get('title', '')}_ · "
-                        f"{c.get('location', '')} · **{c.get('experience_years', 0)}** yrs · _{sk}_"
+                    nm = html.escape(str(c.get("name", "")))
+                    tl = html.escape(str(c.get("title", "")))
+                    loc = html.escape(str(c.get("location", "")))
+                    yrs = int(c.get("experience_years", 0) or 0)
+                    sk_raw = (c.get("skills") or [])[:10]
+                    sk_pills = "".join(
+                        f'<span class="ats-skill-pill" style="font-size:0.75rem;padding:3px 8px;">{html.escape(str(s))}</span>'
+                        for s in sk_raw
                     )
-            with st.expander("Raw pool JSON (debug)"):
-                st.json(discovered)
+                    st.markdown(
+                        f"""
+<div class="ats-card" style="padding:1rem 1.15rem;margin-bottom:0.65rem;">
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline;">
+    <span style="color:#f4f6ff;font-weight:800;font-size:1.02rem;">{nm}</span>
+    <span style="color:#7eb0ff;font-weight:700;font-size:0.88rem;">{yrs} yrs</span>
+  </div>
+  <p style="margin:4px 0 8px 0;color:#c4c8e0;font-size:0.88rem;">{tl} · {loc}</p>
+  <div>{sk_pills}</div>
+</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
 else:
     st.markdown(

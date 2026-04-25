@@ -27,13 +27,19 @@
 - **Scoring realism:** experience band vs JD; location compatibility; **work mode** (e.g. on-site/hybrid vs remote profile) adjusts location fit; optional **penalties/bonus** on match for weak/strong location + experience alignment.
 - **ATS filters (sidebar):** minimum/maximum experience, required skill (substring), title, location, remote-only, **require all JD must-have skills**.
 - **In-tab refinement:** multiselect to require selected skills on profiles; shortlist shown in a **3-column** roster with expanders for feedback.
-- **Explainability tab:** overlap metrics, charts, narrative, location/experience shaping caption, outreach transcript, human-readable **signals** list.
+- **Explainability tab:** overlap metrics, charts, structured narrative cards, location/experience shaping caption, outreach transcript in an expander, human-readable **signals** list.
 - **ATS pipeline:** per-candidate stage + summary chart.
 - **Analytics:** skills, experience buckets, geography.
 - **JD coach:** human-readable **parsed JD card** plus clarity score and suggestions (not JSON-first).
-- **Discovery tab:** same JD card with **pool gap** warning + candidate roster; raw JSON only under **debug** expander.
+- **Discovery tab:** same JD card with **pool gap** warning + **scannable pool cards** (skills as pills); no raw JSON dump in the default view.
 - **Exports:** **Download Shortlist** (CSV) and PDF report (`fpdf2`).
 - **Session save:** snapshot shortlist view to sidebar.
+
+---
+
+## Recent improvements
+
+All dated product and reliability updates live in **[RELEASE_NOTES.md](./RELEASE_NOTES.md)** (single source of truth). The running app loads the same file into the **Release notes** expander under the header so reviewers and users always see identical content.
 
 ---
 
@@ -125,7 +131,7 @@ flowchart LR
         P[ATS pipeline]
         A[Analytics]
         J[JD coach — human JD + suggestions]
-        DIS[Discovery — JD + pool + debug JSON]
+        DIS[Discovery — JD + pool cards]
     end
     D --> T
     T --> X
@@ -240,11 +246,12 @@ Example ranking (illustrative; numbers vary per LLM run):
 
 ```
 ai-talent-scout/
-├── app.py              # Full Streamlit app + business logic
+├── app.py               # Full Streamlit app + business logic
+├── RELEASE_NOTES.md     # Changelog (loaded in-app + linked from README)
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
-└── .devcontainer/      # Optional VS Code / Codespaces dev container
+└── .devcontainer/       # Optional VS Code / Codespaces dev container
 ```
 
 ---
