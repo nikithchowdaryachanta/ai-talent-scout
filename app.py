@@ -25,87 +25,229 @@ st.set_page_config(page_title="TalentScout AI", page_icon="◆", layout="wide", 
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-    .block-container { padding-top: 1.25rem; padding-bottom: 2.5rem; max-width: 1200px; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 
-    /* App shell: soft gray instead of stark white */
+    :root {
+      --saas-bg-deep: #070d18;
+      --saas-bg-main: #0c1222;
+      --saas-bg-panel: #131b2e;
+      --saas-bg-panel-hover: #182236;
+      --saas-border: rgba(148, 163, 184, 0.18);
+      --saas-text-primary: #f8fafc;
+      --saas-text-secondary: #94a3b8;
+      --saas-text-muted: #64748b;
+      --saas-accent-blue: #3b82f6;
+      --saas-accent-blue-soft: rgba(59, 130, 246, 0.15);
+      --saas-accent-green: #22c55e;
+      --saas-accent-green-soft: rgba(34, 197, 94, 0.12);
+    }
+
+    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+    .block-container {
+      padding-top: 1.5rem;
+      padding-bottom: 3rem;
+      max-width: 1180px;
+    }
+
+    /* App shell: deep navy SaaS */
+    .stApp {
+      background: var(--saas-bg-deep) !important;
+      color: var(--saas-text-primary);
+    }
     [data-testid="stAppViewContainer"] > .main {
-        background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+      background: linear-gradient(180deg, var(--saas-bg-deep) 0%, var(--saas-bg-main) 45%, #0f172a 100%) !important;
     }
     section[data-testid="stMain"] > div {
-        background: transparent !important;
+      background: transparent !important;
     }
 
-    /* Hero: only the first title block (do not style global paragraphs — breaks tabs) */
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+      background: linear-gradient(180deg, #0a1020 0%, #111827 100%) !important;
+      border-right: 1px solid var(--saas-border) !important;
+    }
+    [data-testid="stSidebar"] .block-container { padding-top: 1.5rem; }
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] span {
+      color: var(--saas-text-secondary) !important;
+    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+      color: var(--saas-text-primary) !important;
+      font-weight: 700 !important;
+    }
+
+    /* Primary copy + hierarchy */
+    .main .stMarkdown h1 { font-size: 2rem !important; font-weight: 700 !important; letter-spacing: -0.03em; }
+    .main .stMarkdown h2 { font-size: 1.45rem !important; font-weight: 700 !important; margin-top: 0.25rem; }
+    .main .stMarkdown h3 { font-size: 1.2rem !important; font-weight: 700 !important; color: var(--saas-text-primary) !important; }
+    .main .stMarkdown h4, .main .stMarkdown h5 { font-weight: 700 !important; color: var(--saas-text-primary) !important; }
+    .main .stMarkdown p, .main .stMarkdown li { color: var(--saas-text-secondary); line-height: 1.55; font-size: 0.95rem; }
+    .main .stMarkdown strong { color: var(--saas-text-primary) !important; }
+
+    [data-testid="stCaptionContainer"] {
+      color: var(--saas-text-muted) !important;
+      font-size: 0.9rem !important;
+    }
+
+    /* Hero: first title block */
     div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1:first-child) {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-        border-radius: 16px; padding: 1.5rem 1.75rem; margin-bottom: 1.25rem;
-        border: 1px solid rgba(148,163,184,0.25);
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #172554 100%);
+      border-radius: 16px;
+      padding: 1.65rem 1.85rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--saas-border);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
     }
     div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1:first-child) h1 {
-        color: #f8fafc !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.02em;
+      color: var(--saas-text-primary) !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.02em;
     }
 
-    .metric-card {
-        background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
-        padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    /* Metrics */
+    [data-testid="stMetric"] {
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem !important;
+    }
+    [data-testid="stMetricLabel"] { color: var(--saas-text-muted) !important; font-weight: 600 !important; font-size: 0.78rem !important; text-transform: uppercase; letter-spacing: 0.04em; }
+    [data-testid="stMetricValue"] { color: var(--saas-text-primary) !important; font-weight: 700 !important; }
+    [data-testid="stMetricDelta"] { color: var(--saas-accent-green) !important; }
+
+    /* Primary buttons */
+    button[kind="primary"], [data-testid="baseButton-primary"] {
+      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important;
+      border: 1px solid rgba(96, 165, 250, 0.45) !important;
+      color: #fff !important;
+      font-weight: 600 !important;
+    }
+    button[kind="primary"]:hover { filter: brightness(1.08); }
+
+    /* Secondary buttons */
+    button[kind="secondary"] {
+      background: var(--saas-bg-panel) !important;
+      color: var(--saas-text-primary) !important;
+      border: 1px solid var(--saas-border) !important;
     }
 
-    /* Tabs: high contrast labels (selected vs unselected) */
+    /* Inputs */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input, [data-baseweb="select"] > div {
+      background-color: var(--saas-bg-panel) !important;
+      color: var(--saas-text-primary) !important;
+      border-color: var(--saas-border) !important;
+    }
+    .stTextInput label, .stTextArea label, .stNumberInput label, .stSlider label, .stMultiSelect label, .stSelectbox label {
+      color: var(--saas-text-secondary) !important;
+      font-weight: 600 !important;
+    }
+
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-        background-color: #cbd5e1 !important;
-        padding: 8px 10px !important;
-        border-radius: 12px;
-        border: 1px solid #94a3b8;
+      gap: 8px;
+      background-color: var(--saas-bg-panel) !important;
+      padding: 10px 12px !important;
+      border-radius: 12px;
+      border: 1px solid var(--saas-border);
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        color: #0f172a !important;
-        background-color: transparent !important;
-        font-weight: 600 !important;
+      border-radius: 8px;
+      color: var(--saas-text-secondary) !important;
+      background-color: transparent !important;
+      font-weight: 600 !important;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: #e2e8f0 !important;
-        color: #0f172a !important;
+      background-color: var(--saas-bg-panel-hover) !important;
+      color: var(--saas-text-primary) !important;
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #0284c7 !important;
-        color: #ffffff !important;
+      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+      color: #ffffff !important;
     }
-    .stTabs [data-baseweb="tab-highlight"] {
-        visibility: hidden;
-    }
-    /* Tab panel content */
+    .stTabs [data-baseweb="tab-highlight"] { visibility: hidden; }
     .stTabs [data-baseweb="tab-panel"] {
-        padding-top: 1rem;
-        color: #0f172a !important;
+      padding-top: 1.35rem;
+      color: var(--saas-text-secondary) !important;
     }
-    .stTabs button[role="tab"] {
-        color: #0f172a !important;
+    .stTabs button[role="tab"] { color: var(--saas-text-secondary) !important; }
+    .stTabs button[role="tab"][aria-selected="true"] { color: #ffffff !important; }
+
+    /* Progress */
+    [data-testid="stProgress"] > div > div > div > div {
+      background: linear-gradient(90deg, #22c55e, #4ade80) !important;
     }
-    .stTabs button[role="tab"][aria-selected="true"] {
-        color: #ffffff !important;
+
+    /* Dividers */
+    hr { border-color: var(--saas-border) !important; margin: 1.35rem 0 !important; }
+
+    /* Expanders */
+    [data-testid="stExpander"] {
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-radius: 12px;
+    }
+    [data-testid="stExpander"] summary { color: var(--saas-text-primary) !important; font-weight: 600 !important; }
+
+    /* Alerts */
+    .stAlert { border-radius: 12px; border: 1px solid var(--saas-border); }
+
+    /* Radio */
+    .stRadio label { color: var(--saas-text-secondary) !important; }
+
+    /* Custom cards (HTML) */
+    .metric-card {
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-radius: 12px;
+      padding: 1.1rem 1.3rem;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
     }
     .ats-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 1.1rem 1.35rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-radius: 16px;
+      padding: 1.35rem 1.5rem;
+      margin-bottom: 1.15rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
     }
     .ats-section-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: #64748b;
-        margin-bottom: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--saas-text-muted);
+      margin-bottom: 0.4rem;
     }
+    .ats-candidate-name { color: var(--saas-text-primary); font-weight: 700; }
+    .ats-score-final { font-weight: 800; letter-spacing: -0.02em; }
+    .ats-score-final--high { color: var(--saas-accent-green) !important; text-shadow: 0 0 24px rgba(34, 197, 94, 0.25); }
+    .ats-score-final--mid { color: #60a5fa !important; }
+    .ats-score-final--low { color: #fbbf24 !important; }
+    .ats-match-chip { color: #93c5fd !important; font-weight: 700; }
+    .ats-interest-chip { color: #c4b5fd !important; font-weight: 700; }
+    .ats-skill-pill {
+      display: inline-block;
+      background: var(--saas-accent-blue-soft);
+      color: #bfdbfe;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin: 4px 4px 0 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    /* JSON / code-ish blocks */
+    [data-testid="stJson"] {
+      background: var(--saas-bg-panel) !important;
+      border: 1px solid var(--saas-border) !important;
+      border-radius: 12px !important;
+      color: var(--saas-text-secondary) !important;
+    }
+
+    /* Dataframe */
+    [data-testid="stDataFrame"] { border: 1px solid var(--saas-border); border-radius: 12px; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -632,17 +774,30 @@ def passes_skill_refine(row, selected_skills):
     return True
 
 
+def _final_score_css_class(score):
+    try:
+        s = int(score)
+    except (TypeError, ValueError):
+        return "ats-score-final--mid"
+    if s >= 75:
+        return "ats-score-final--high"
+    if s >= 55:
+        return "ats-score-final--mid"
+    return "ats-score-final--low"
+
+
 def render_profile_card(item, rank, final_display_score):
     """Structured ATS-style profile card (skills, experience, location)."""
     skills = item.get("skills", []) or []
     pills = "".join(
-        "<span style=\"display:inline-block;background:#e0f2fe;color:#0c4a6e;padding:4px 12px;"
-        "border-radius:999px;margin:3px;font-size:0.82rem;font-weight:600;\">"
-        f"{html.escape(str(s))}</span>"
+        f'<span class="ats-skill-pill">{html.escape(str(s))}</span>'
         for s in skills[:14]
     )
     if len(skills) > 14:
-        pills += f'<span style="color:#64748b;font-size:0.82rem;"> +{len(skills) - 14} more</span>'
+        pills += (
+            f'<span style="color:#64748b;font-size:0.82rem;margin-left:4px;">'
+            f"+{len(skills) - 14} more</span>"
+        )
     exp = item.get("explainability") or {}
     loc_line = html.escape(str(item.get("location", "")))
     title_line = html.escape(str(item.get("title", "")))
@@ -657,25 +812,34 @@ def render_profile_card(item, rank, final_display_score):
         jd_yr_txt = f"{jmin}+ yrs"
     else:
         jd_yr_txt = "open band"
+    final_cls = _final_score_css_class(final_display_score)
+    match_s = item.get("match_score", "—")
+    interest_s = item.get("interest_score", "—")
     card = f"""
 <div class="ats-card">
-  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;">
-    <div>
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:1.25rem;">
+    <div style="flex:1;min-width:200px;">
       <div class="ats-section-title">Rank #{rank}</div>
-      <div style="font-size:1.35rem;font-weight:700;color:#0f172a;">{name_line}</div>
-      <div style="color:#475569;font-weight:600;">{title_line}</div>
-      <div style="margin-top:6px;color:#64748b;font-size:0.95rem;">📍 {loc_line} · <b>{yr}</b> yrs exp
-      <span style="color:#94a3b8;"> · JD target: {html.escape(jd_yr_txt)}</span></div>
+      <div class="ats-candidate-name" style="font-size:1.35rem;">{name_line}</div>
+      <div style="color:#cbd5e1;font-weight:600;margin-top:2px;">{title_line}</div>
+      <div style="margin-top:10px;color:#94a3b8;font-size:0.95rem;line-height:1.5;">
+        <span style="color:#e2e8f0;">📍</span> {loc_line} · <strong style="color:#f8fafc;">{yr}</strong> yrs exp
+        <span style="color:#64748b;"> · JD target: {html.escape(jd_yr_txt)}</span>
+      </div>
     </div>
-    <div style="text-align:right;">
-      <div class="ats-section-title">Scores</div>
-      <div style="font-size:1.5rem;font-weight:800;color:#0284c7;">{final_display_score}</div>
-      <div style="font-size:0.85rem;color:#64748b;">M {item.get("match_score")} · I {item.get("interest_score")}</div>
+    <div style="text-align:right;min-width:120px;">
+      <div class="ats-section-title">Final score</div>
+      <div class="ats-score-final {final_cls}" style="font-size:1.65rem;line-height:1.1;">{final_display_score}</div>
+      <div style="font-size:0.88rem;margin-top:8px;color:#94a3b8;">
+        <span class="ats-match-chip">Match {match_s}</span>
+        <span style="color:#475569;"> · </span>
+        <span class="ats-interest-chip">Interest {interest_s}</span>
+      </div>
     </div>
   </div>
-  <div class="ats-section-title" style="margin-top:14px;">Skills</div>
-  <div>{pills or '<span style="color:#94a3b8;">No skills on profile</span>'}</div>
-  <div style="margin-top:12px;font-size:0.92rem;color:#334155;line-height:1.45;">{sum_line}</div>
+  <div class="ats-section-title" style="margin-top:1.15rem;">Skills</div>
+  <div>{pills or '<span style="color:#64748b;">No skills on profile</span>'}</div>
+  <div style="margin-top:14px;font-size:0.93rem;color:#cbd5e1;line-height:1.55;">{sum_line}</div>
 </div>
 """
     st.markdown(card, unsafe_allow_html=True)
@@ -1220,9 +1384,16 @@ if results:
 else:
     st.markdown(
         """
-        **Getting started**
-        1. Paste a JD and choose candidate source.  
-        2. Click **Run agent**.  
-        3. Use **Shortlist**, **Explainability**, **ATS pipeline**, **Analytics**, and **JD coach** tabs.
-        """
+<div class="ats-card" style="max-width:720px;">
+  <div class="ats-section-title">Getting started</div>
+  <p style="color:#cbd5e1;margin:0 0 12px 0;line-height:1.6;font-size:0.98rem;">
+    <strong style="color:#f8fafc;">1.</strong> Paste a JD and choose a candidate source.<br/>
+    <strong style="color:#f8fafc;">2.</strong> Click <strong style="color:#60a5fa;">Run agent</strong>.<br/>
+    <strong style="color:#f8fafc;">3.</strong> Use <strong style="color:#f8fafc;">Shortlist</strong>,
+    <strong style="color:#f8fafc;">Explainability</strong>, <strong style="color:#f8fafc;">ATS pipeline</strong>,
+    <strong style="color:#f8fafc;">Analytics</strong>, and <strong style="color:#f8fafc;">JD coach</strong> tabs.
+  </p>
+</div>
+        """,
+        unsafe_allow_html=True,
     )
