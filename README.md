@@ -15,6 +15,11 @@ It automates:
 - **JD optimization coach**: clarity score and actionable suggestions
 - **Recruiter feedback loop**: approve / reject adjusts displayed ranking (demo learning nudge)
 - **Export**: CSV and PDF shortlist report
+- **Command center**: JD context row (role, min/max experience band, work mode) plus **“Why this order?”** ranking narrative
+- **ATS profile cards**: structured cards with skill pills, years, location, JD target band, and scores
+- **Experience range scoring**: JD may include `max_experience_years`; match logic rewards in-band years and explains under/over-band cases
+- **In-tab skill refinement**: multiselect to require all selected skills on top of sidebar filters
+- **Session shortlist save**: snapshot current filtered view to the sidebar for quick recall
 - Final ranked shortlist using weighted Match + Interest scores
 
 ## Live App
