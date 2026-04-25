@@ -290,12 +290,114 @@ def parse_json_response(raw_text):
     return json.loads(text)
 
 
+# Split JD/candidate skill blobs: commas, semicolons, pipes, slashes, newlines, bullets, "and"
+_SKILL_SPLIT_PATTERN = re.compile(r"[,;/|\n•]+|\s+(?:and|&)\s+", re.IGNORECASE)
+
+
+def normalize_skill_key(s):
+    """Lowercase, trimmed, collapsed whitespace for comparison."""
+    if s is None:
+        return ""
+    t = str(s).strip().lower()
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"^[•\-\*\.\s]+|[•\-\*\.\s]+$", "", t)
+    return t.strip()
+
+
 def parse_list(value):
-    if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
-    if isinstance(value, str):
-        return [part.strip() for part in value.split(",") if part.strip()]
-    return []
+    """Flatten nested lists and split strings on common skill delimiters."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        merged = []
+        for item in value:
+            merged.extend(parse_list(item))
+        return [x for x in merged if str(x).strip()]
+    if isinstance(value, dict):
+        inner = value.get("skills") or value.get("name")
+        return parse_list(inner) if inner is not None else []
+    s = str(value).strip()
+    if not s:
+        return []
+    parts = [p.strip() for p in _SKILL_SPLIT_PATTERN.split(s) if p and str(p).strip()]
+    if not parts:
+        return [s]
+    return parts
+
+
+def dedupe_skills_preserve_order(skills):
+    """Unique skills by normalized key; keep first-seen display spelling."""
+    seen = set()
+    out = []
+    for raw in skills or []:
+        k = normalize_skill_key(raw)
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(str(raw).strip())
+    return out
+
+
+def extract_must_skills_from_jd_text(jd_text, max_items=32):
+    """Fallback when the model returns no must_have_skills: scan JD for Must have / Required blocks."""
+    if not jd_text or not str(jd_text).strip():
+        return []
+    jd_full = str(jd_text)
+    m = re.search(
+        r"(?is)(?:^|\n)\s*(?:must[\s-]*have|must-have|required\s*(?:skills|technologies)|"
+        r"key\s*skills|technical\s*skills)\s*[:.\-–]?\s*",
+        jd_full,
+    )
+    if not m:
+        return []
+    window = jd_full[m.end() : m.end() + 4000]
+    collected = []
+    for raw_line in window.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(
+            r"(?i)^(nice\s*to|good\s*to|preferred|optional|responsibilit|qualification|"
+            r"what\s*you|you\s*will|benefits|about\s*us|experience\s*[:])",
+            line,
+        ):
+            break
+        if re.match(r"(?i)^must\s*have", line) and len(line) < 40:
+            continue
+        line = re.sub(r"^[\d\s)\.\-\*•>]+", "", line).strip()
+        if 2 <= len(line) <= 90 and not line.endswith(":"):
+            collected.extend(parse_list(line))
+    return dedupe_skills_preserve_order(collected)[:max_items]
+
+
+def skill_key_matches_jd_to_candidate(jd_skill_display, cand_skill_displays):
+    """True if JD skill matches any candidate skill (exact normalized or short substring overlap)."""
+    jk = normalize_skill_key(jd_skill_display)
+    if not jk:
+        return False
+    cand_keys = [normalize_skill_key(c) for c in (cand_skill_displays or []) if normalize_skill_key(c)]
+    if jk in cand_keys:
+        return True
+    for ck in cand_keys:
+        if len(jk) >= 3 and len(ck) >= 3 and (jk in ck or ck in jk):
+            return True
+    return False
+
+
+def partition_jd_skills_against_candidate(jd_skill_list, cand_skill_list):
+    """
+    Compare JD required skills to candidate profile skills.
+    Returns (matched_display_strings, missing_display_strings) using JD wording for both.
+    """
+    jd_flat = dedupe_skills_preserve_order(parse_list(jd_skill_list))
+    cand_flat = dedupe_skills_preserve_order(parse_list(cand_skill_list))
+    matched, missing = [], []
+    for jd_s in jd_flat:
+        if skill_key_matches_jd_to_candidate(jd_s, cand_flat):
+            matched.append(jd_s)
+        else:
+            missing.append(jd_s)
+    return matched, missing
 
 
 def safe_model_json(prompt, fallback):
@@ -348,7 +450,7 @@ Resume text:
     return {
         "name": str(data.get("name") or label).strip(),
         "title": str(data.get("title") or "Unknown").strip(),
-        "skills": parse_list(data.get("skills")),
+        "skills": dedupe_skills_preserve_order(parse_list(data.get("skills"))),
         "experience_years": extract_years(data.get("experience_years", 0)),
         "location": str(data.get("location") or "Not specified").strip(),
         "summary": str(data.get("summary") or "").strip(),
@@ -378,7 +480,7 @@ def parse_candidate_json(raw_text):
             {
                 "name": str(item["name"]).strip(),
                 "title": str(item["title"]).strip(),
-                "skills": parse_list(item["skills"]),
+                "skills": dedupe_skills_preserve_order(parse_list(item["skills"])),
                 "experience_years": extract_years(item["experience_years"]),
                 "location": str(item["location"]).strip(),
                 "summary": str(item["summary"]).strip(),
@@ -532,6 +634,11 @@ Return valid JSON only:
   "summary": "1-2 lines"
 }}
 
+Rules:
+- must_have_skills and nice_to_have_skills MUST be JSON arrays of strings.
+- Put ONE skill per array element (e.g. ["Python", "SQL"]); never one comma-joined string.
+- If the JD lists skills in a paragraph, split them into separate array entries.
+
 Job Description:
 {jd_text}
 """
@@ -547,8 +654,10 @@ Job Description:
         "summary": "Could not parse JD reliably.",
     }
     parsed = safe_model_json(prompt, fallback)
-    parsed["must_have_skills"] = parse_list(parsed.get("must_have_skills"))
-    parsed["nice_to_have_skills"] = parse_list(parsed.get("nice_to_have_skills"))
+    parsed["must_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("must_have_skills")))
+    parsed["nice_to_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("nice_to_have_skills")))
+    if not parsed["must_have_skills"]:
+        parsed["must_have_skills"] = extract_must_skills_from_jd_text(jd_text)
     parsed["min_experience_years"] = extract_years(parsed.get("min_experience_years", 0))
     mx = parsed.get("max_experience_years", 0)
     parsed["max_experience_years"] = extract_years(mx) if mx else 0
@@ -586,14 +695,14 @@ Structured parse:
 
 
 def discover_candidates(pool, jd_data, max_results):
-    must_have = {skill.lower() for skill in jd_data.get("must_have_skills", [])}
+    jd_must = dedupe_skills_preserve_order(parse_list(jd_data.get("must_have_skills")))
     min_years = jd_data.get("min_experience_years", 0)
     shortlisted = []
 
     for candidate in pool:
-        cand_skills = {skill.lower() for skill in candidate["skills"]}
-        matched_must = len(must_have.intersection(cand_skills))
-        must_ratio = matched_must / len(must_have) if must_have else 0.5
+        cand_flat = dedupe_skills_preserve_order(parse_list(candidate.get("skills")))
+        matched_cnt = sum(1 for s in jd_must if skill_key_matches_jd_to_candidate(s, cand_flat))
+        must_ratio = matched_cnt / len(jd_must) if jd_must else 0.5
         exp_ok = candidate["experience_years"] >= min_years
 
         discovery_score = (must_ratio * 70) + (30 if exp_ok else 10)
@@ -607,15 +716,13 @@ def discover_candidates(pool, jd_data, max_results):
 def jd_pool_skill_gaps(must_have_list, discovered_pool):
     """Must-have skills no one in the discovery pool lists on their profile."""
     gap = []
-    for m in must_have_list or []:
-        sk = str(m).lower()
+    jd_flat = dedupe_skills_preserve_order(parse_list(must_have_list))
+    for m in jd_flat:
         found = False
         for c in discovered_pool or []:
-            for s in c.get("skills") or []:
-                if sk in str(s).lower() or str(s).lower() in sk:
-                    found = True
-                    break
-            if found:
+            cand_flat = dedupe_skills_preserve_order(parse_list(c.get("skills")))
+            if skill_key_matches_jd_to_candidate(m, cand_flat):
+                found = True
                 break
         if not found:
             gap.append(m)
@@ -660,16 +767,21 @@ def render_jd_human_card(jd_data, discovered=None, *, show_pool_gap=False):
 
 
 def score_match_with_explainability(jd_data, candidate):
-    must_have = {skill.lower() for skill in jd_data.get("must_have_skills", [])}
-    nice_to_have = {skill.lower() for skill in jd_data.get("nice_to_have_skills", [])}
-    cand_skills = {skill.lower() for skill in candidate["skills"]}
+    jd_must_src = jd_data.get("must_have_skills") or []
+    jd_nice_src = jd_data.get("nice_to_have_skills") or []
+    cand_skills_src = candidate.get("skills") or []
 
-    matched_must = sorted(must_have.intersection(cand_skills))
-    missing_must = sorted(must_have.difference(cand_skills))
-    matched_nice = sorted(nice_to_have.intersection(cand_skills))
+    matched_must, missing_must = partition_jd_skills_against_candidate(jd_must_src, cand_skills_src)
+    matched_nice, _missing_nice = partition_jd_skills_against_candidate(jd_nice_src, cand_skills_src)
 
-    must_ratio = len(matched_must) / len(must_have) if must_have else 0.6
-    nice_ratio = len(matched_nice) / len(nice_to_have) if nice_to_have else 0.5
+    must_f = dedupe_skills_preserve_order(parse_list(jd_must_src))
+    nice_f = dedupe_skills_preserve_order(parse_list(jd_nice_src))
+    matched_must = sorted(matched_must, key=lambda x: normalize_skill_key(x))
+    missing_must = sorted(missing_must, key=lambda x: normalize_skill_key(x))
+    matched_nice = sorted(matched_nice, key=lambda x: normalize_skill_key(x))
+
+    must_ratio = len(matched_must) / len(must_f) if must_f else 0.6
+    nice_ratio = len(matched_nice) / len(nice_f) if nice_f else 0.5
     min_y = jd_data.get("min_experience_years", 0) or 0
     max_y = jd_data.get("max_experience_years", 0) or 0
     cand_y = int(candidate.get("experience_years", 0) or 0)
@@ -770,6 +882,7 @@ Base match score (after alignment): {base_match}
         "matched_must_have": matched_must,
         "missing_must_have": missing_must,
         "matched_nice_to_have": matched_nice,
+        "jd_must_skill_count": len(must_f),
         "base_match_score": base_match,
         "llm_adjustment": adjustment,
         "reason": explain_json.get("explanation", ""),
@@ -937,7 +1050,7 @@ def render_top_candidate_insight(rows, feedback_map, jd_data):
         bullets.append("Moderate interest — worth a screening call")
     bullets = bullets[:5]
     reason = html.escape(str(top.get("interest_reason", "") or "").strip())
-    matched = _format_skill_phrase(mm)
+    matched = _format_skill_phrase(mm) if mm else "None"
     mc = _traffic_color(top.get("match_score", 0))
     ic = _traffic_color(top.get("interest_score", 0))
     fc = _traffic_color(fs)
@@ -997,10 +1110,18 @@ def render_profile_card(item, rank, final_display_score):
     final_c = _traffic_color(final_display_score)
     matched_must = exp.get("matched_must_have") or []
     missing_must = exp.get("missing_must_have") or []
-    matched_txt = _format_skill_phrase(matched_must) if matched_must else "—"
-    missing_txt = _format_skill_phrase(missing_must[:12]) if missing_must else "—"
-    if missing_must and len(missing_must) > 12:
-        missing_txt += f" (+{len(missing_must) - 12} more)"
+    jd_must_n = int(exp.get("jd_must_skill_count", -1))
+    if jd_must_n < 0:
+        jd_must_n = len(matched_must) + len(missing_must)
+    if jd_must_n == 0:
+        matched_txt = "None (no must-have skills in JD — add a clear Must have list and re-run)"
+        missing_txt = "None"
+    else:
+        matched_txt = _format_skill_phrase(matched_must) if matched_must else "None"
+        miss_show = missing_must[:12]
+        missing_txt = _format_skill_phrase(miss_show) if miss_show else "None"
+        if missing_must and len(missing_must) > 12:
+            missing_txt += f" (+{len(missing_must) - 12} more)"
     loc_fit = exp.get("location_fit_pct", "—")
     exp_fit = exp.get("experience_fit_pct", "—")
     yr_warn = ""
@@ -1527,8 +1648,14 @@ if results:
             st.write("**Experience (range vs JD):**", exp.get("experience_range_note", ""))
             st.write("**Experience (detail):**", exp.get("experience_alignment_note", ""))
             st.write("**Location / mode:**", exp.get("location_work_mode_note", ""))
-            st.write("**Matched must-have:**", ", ".join(exp["matched_must_have"]) or "—")
-            st.write("**Missing must-have:**", ", ".join(exp["missing_must_have"]) or "—")
+            st.write(
+                "**Matched must-have:**",
+                ", ".join(exp["matched_must_have"]) if exp["matched_must_have"] else "None",
+            )
+            st.write(
+                "**Missing must-have:**",
+                ", ".join(exp["missing_must_have"]) if exp["missing_must_have"] else "None",
+            )
             with st.expander("Outreach transcript"):
                 for line in item["conversation"]:
                     st.write(line)
