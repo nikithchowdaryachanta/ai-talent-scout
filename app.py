@@ -28,18 +28,18 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 
     :root {
-      --saas-bg-deep: #070d18;
-      --saas-bg-main: #0c1222;
-      --saas-bg-panel: #131b2e;
-      --saas-bg-panel-hover: #182236;
-      --saas-border: rgba(148, 163, 184, 0.18);
-      --saas-text-primary: #f8fafc;
-      --saas-text-secondary: #94a3b8;
-      --saas-text-muted: #64748b;
-      --saas-accent-blue: #3b82f6;
-      --saas-accent-blue-soft: rgba(59, 130, 246, 0.15);
-      --saas-accent-green: #22c55e;
-      --saas-accent-green-soft: rgba(34, 197, 94, 0.12);
+      --saas-bg-deep: #0e1117;
+      --saas-bg-main: #0e1117;
+      --saas-bg-panel: #1c1f26;
+      --saas-bg-panel-hover: #252830;
+      --saas-border: rgba(255, 255, 255, 0.08);
+      --saas-text-primary: #ffffff;
+      --saas-text-secondary: #a0a3bd;
+      --saas-text-muted: #6b6e8c;
+      --saas-accent-blue: #4f8ef7;
+      --saas-accent-blue-soft: rgba(79, 142, 247, 0.18);
+      --saas-accent-green: #3dd68c;
+      --saas-accent-green-soft: rgba(61, 214, 140, 0.14);
     }
 
     html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
@@ -55,7 +55,7 @@ st.markdown(
       color: var(--saas-text-primary);
     }
     [data-testid="stAppViewContainer"] > .main {
-      background: linear-gradient(180deg, var(--saas-bg-deep) 0%, var(--saas-bg-main) 45%, #0f172a 100%) !important;
+      background: var(--saas-bg-deep) !important;
     }
     section[data-testid="stMain"] > div {
       background: transparent !important;
@@ -63,7 +63,7 @@ st.markdown(
 
     /* Sidebar */
     [data-testid="stSidebar"] {
-      background: linear-gradient(180deg, #0a1020 0%, #111827 100%) !important;
+      background: var(--saas-bg-panel) !important;
       border-right: 1px solid var(--saas-border) !important;
     }
     [data-testid="stSidebar"] .block-container { padding-top: 1.5rem; }
@@ -92,7 +92,7 @@ st.markdown(
 
     /* Hero: first title block */
     div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1:first-child) {
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #172554 100%);
+      background: linear-gradient(135deg, #1c1f26 0%, #252a35 100%);
       border-radius: 16px;
       padding: 1.65rem 1.85rem;
       margin-bottom: 1.5rem;
@@ -118,8 +118,8 @@ st.markdown(
 
     /* Primary buttons */
     button[kind="primary"], [data-testid="baseButton-primary"] {
-      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important;
-      border: 1px solid rgba(96, 165, 250, 0.45) !important;
+      background: linear-gradient(180deg, #4f8ef7 0%, #3b7ae8 100%) !important;
+      border: 1px solid rgba(127, 168, 249, 0.55) !important;
       color: #fff !important;
       font-weight: 600 !important;
     }
@@ -162,7 +162,7 @@ st.markdown(
       color: var(--saas-text-primary) !important;
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+      background: linear-gradient(180deg, #4f8ef7 0%, #3b7ae8 100%) !important;
       color: #ffffff !important;
     }
     .stTabs [data-baseweb="tab-highlight"] { visibility: hidden; }
@@ -175,7 +175,7 @@ st.markdown(
 
     /* Progress */
     [data-testid="stProgress"] > div > div > div > div {
-      background: linear-gradient(90deg, #22c55e, #4ade80) !important;
+      background: linear-gradient(90deg, #4f8ef7, #7eb0ff) !important;
     }
 
     /* Dividers */
@@ -222,15 +222,15 @@ st.markdown(
     .ats-candidate-name { color: var(--saas-text-primary); font-weight: 700; }
     .ats-score-final { font-weight: 800; letter-spacing: -0.02em; }
     .ats-score-final--high { color: var(--saas-accent-green) !important; text-shadow: 0 0 24px rgba(34, 197, 94, 0.25); }
-    .ats-score-final--mid { color: #60a5fa !important; }
+    .ats-score-final--mid { color: #4f8ef7 !important; }
     .ats-score-final--low { color: #fbbf24 !important; }
-    .ats-match-chip { color: #93c5fd !important; font-weight: 700; }
-    .ats-interest-chip { color: #c4b5fd !important; font-weight: 700; }
+    .ats-match-chip { color: #7eb0ff !important; font-weight: 700; }
+    .ats-interest-chip { color: #b8b9e8 !important; font-weight: 700; }
     .ats-skill-pill {
       display: inline-block;
       background: var(--saas-accent-blue-soft);
-      color: #bfdbfe;
-      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #c8d9ff;
+      border: 1px solid rgba(79, 142, 247, 0.4);
       padding: 5px 12px;
       border-radius: 999px;
       margin: 4px 4px 0 0;
@@ -248,6 +248,18 @@ st.markdown(
 
     /* Dataframe */
     [data-testid="stDataFrame"] { border: 1px solid var(--saas-border); border-radius: 12px; }
+
+    .insight-card {
+      background: var(--saas-bg-panel);
+      border: 1px solid var(--saas-border);
+      border-left: 4px solid var(--saas-accent-blue);
+      border-radius: 14px;
+      padding: 1.15rem 1.35rem;
+      margin: 0 0 1.25rem 0;
+    }
+    .insight-card h4 { color: var(--saas-text-primary) !important; margin: 0 0 0.5rem 0; font-size: 1.05rem; }
+    .insight-card ul { color: var(--saas-text-secondary); margin: 0.35rem 0 0 1.1rem; padding: 0; line-height: 1.55; }
+    .insight-card .sub { color: var(--saas-text-muted); font-size: 0.88rem; margin-top: 0.65rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -614,6 +626,16 @@ def score_match_with_explainability(jd_data, candidate):
 
     base_match = clamp_score((must_ratio * 50) + (nice_ratio * 20) + (exp_ratio * 15) + (loc_score / 100 * 15))
 
+    # Explicit location / experience modifiers (penalty for mismatch, small bonus when both strong)
+    loc_penalty_pts = max(0, min(12, int(round((60 - loc_score) * 0.22))))
+    exp_penalty_pts = max(0, min(12, int(round((60 - experience_fit_pct) * 0.2))))
+    alignment_bonus_pts = 0
+    if loc_score >= 86 and experience_fit_pct >= 84:
+        alignment_bonus_pts = 5
+    elif loc_score >= 78 and experience_fit_pct >= 72:
+        alignment_bonus_pts = 2
+    base_match = clamp_score(base_match - loc_penalty_pts - exp_penalty_pts + alignment_bonus_pts)
+
     explain_prompt = f"""
 You are evaluating candidate-job fit for recruiters (Explainable AI).
 Return valid JSON only:
@@ -635,7 +657,9 @@ Skill overlap % (must): {skill_overlap_pct}
 Experience fit %: {experience_fit_pct}
 Experience range context: {exp_range_note}
 Location compatibility score: {loc_score}
-Base match score: {base_match}
+Experience fit %: {experience_fit_pct}
+ATS-style adjustments applied: location penalty {loc_penalty_pts}, experience penalty {exp_penalty_pts}, alignment bonus +{alignment_bonus_pts}
+Base match score (after alignment): {base_match}
 """
 
     explain_json = safe_model_json(
@@ -670,6 +694,9 @@ Base match score: {base_match}
         "jd_min_years": min_y,
         "jd_max_years": max_y,
         "candidate_years": cand_y,
+        "loc_penalty_pts": loc_penalty_pts,
+        "exp_penalty_pts": exp_penalty_pts,
+        "alignment_bonus_pts": alignment_bonus_pts,
     }
     return final_match, explainability
 
@@ -764,6 +791,54 @@ def build_ranking_summary(rows, feedback_map, jd_data):
     return "\n\n".join(lines)
 
 
+def _format_skill_phrase(skills):
+    if not skills:
+        return "—"
+    return ", ".join(str(s).strip().title() for s in skills if str(s).strip())
+
+
+def render_top_candidate_insight(rows, feedback_map, jd_data):
+    """Decision-focused callout for the best candidate in the current view."""
+    if not rows:
+        return
+    top = max(rows, key=lambda r: display_final_score(r, feedback_map))
+    fs = display_final_score(top, feedback_map)
+    exp = top.get("explainability") or {}
+    bullets = []
+    if exp.get("skill_overlap_pct", 0) >= 60:
+        bullets.append("Strong overlap on JD must-have skills")
+    if exp.get("experience_fit_pct", 0) >= 72:
+        bullets.append("Experience band aligns with the role")
+    if exp.get("location_fit_pct", 0) >= 72:
+        bullets.append("Location / work mode fits the JD")
+    if top.get("interest_score", 0) >= 70:
+        bullets.append("High simulated interest from outreach")
+    if exp.get("matched_nice_to_have"):
+        bullets.append("Bonus: matches several nice-to-have skills")
+    if not bullets:
+        bullets.append("Best composite score under your current match / interest weights")
+    reason = html.escape(str(top.get("interest_reason", "") or "").strip())
+    matched = _format_skill_phrase(exp.get("matched_must_have") or [])
+    bullets_html = "".join(f"<li>{html.escape(b)}</li>" for b in bullets[:6])
+    st.markdown(
+        f"""
+<div class="insight-card">
+  <h4>🏆 Best candidate (this view): {html.escape(str(top.get("name", "")))}</h4>
+  <p style="margin:0;color:#A0A3BD;font-size:0.95rem;">
+    Final score <strong style="color:#4F8EF7;">{fs}</strong>
+    · Match <strong style="color:#FFFFFF;">{top.get("match_score", "—")}</strong>
+    · Interest <strong style="color:#FFFFFF;">{top.get("interest_score", "—")}</strong>
+  </p>
+  <p style="margin:10px 0 6px 0;color:#FFFFFF;font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Why hire them?</p>
+  <ul style="list-style:disc;">{bullets_html}</ul>
+  <p class="sub">Must-haves covered: {matched}</p>
+  {f'<p class="sub">Interest signal: {reason}</p>' if reason else ''}
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def passes_skill_refine(row, selected_skills):
     if not selected_skills:
         return True
@@ -787,59 +862,59 @@ def _final_score_css_class(score):
 
 
 def render_profile_card(item, rank, final_display_score):
-    """Structured ATS-style profile card (skills, experience, location)."""
-    skills = item.get("skills", []) or []
-    pills = "".join(
-        f'<span class="ats-skill-pill">{html.escape(str(s))}</span>'
-        for s in skills[:14]
-    )
-    if len(skills) > 14:
-        pills += (
-            f'<span style="color:#64748b;font-size:0.82rem;margin-left:4px;">'
-            f"+{len(skills) - 14} more</span>"
-        )
+    """Recruiter-focused card: identity, scores, JD must-have match vs gaps."""
     exp = item.get("explainability") or {}
     loc_line = html.escape(str(item.get("location", "")))
     title_line = html.escape(str(item.get("title", "")))
     name_line = html.escape(str(item.get("name", "")))
-    sum_line = html.escape(str(item.get("candidate_summary", ""))[:220])
+    sum_line = html.escape(str(item.get("candidate_summary", ""))[:180])
     yr = int(item.get("experience_years", 0) or 0)
     jmin = exp.get("jd_min_years", 0)
     jmax = exp.get("jd_max_years", 0)
     if jmin and jmax:
-        jd_yr_txt = f"{jmin}–{jmax} yrs"
+        jd_yr_txt = f"{jmin}–{jmax} yrs (JD)"
     elif jmin:
-        jd_yr_txt = f"{jmin}+ yrs"
+        jd_yr_txt = f"{jmin}+ yrs (JD)"
     else:
-        jd_yr_txt = "open band"
+        jd_yr_txt = "JD band open"
     final_cls = _final_score_css_class(final_display_score)
     match_s = item.get("match_score", "—")
     interest_s = item.get("interest_score", "—")
+    matched_must = exp.get("matched_must_have") or []
+    missing_must = exp.get("missing_must_have") or []
+    matched_txt = _format_skill_phrase(matched_must) if matched_must else "— (no JD must-haves or none matched)"
+    missing_txt = _format_skill_phrase(missing_must[:10]) if missing_must else "—"
+    if missing_must and len(missing_must) > 10:
+        missing_txt += f" (+{len(missing_must) - 10} more)"
+    loc_fit = exp.get("location_fit_pct", "—")
+    exp_fit = exp.get("experience_fit_pct", "—")
     card = f"""
 <div class="ats-card">
-  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:1.25rem;">
-    <div style="flex:1;min-width:200px;">
-      <div class="ats-section-title">Rank #{rank}</div>
-      <div class="ats-candidate-name" style="font-size:1.35rem;">{name_line}</div>
-      <div style="color:#cbd5e1;font-weight:600;margin-top:2px;">{title_line}</div>
-      <div style="margin-top:10px;color:#94a3b8;font-size:0.95rem;line-height:1.5;">
-        <span style="color:#e2e8f0;">📍</span> {loc_line} · <strong style="color:#f8fafc;">{yr}</strong> yrs exp
-        <span style="color:#64748b;"> · JD target: {html.escape(jd_yr_txt)}</span>
-      </div>
-    </div>
-    <div style="text-align:right;min-width:120px;">
-      <div class="ats-section-title">Final score</div>
-      <div class="ats-score-final {final_cls}" style="font-size:1.65rem;line-height:1.1;">{final_display_score}</div>
-      <div style="font-size:0.88rem;margin-top:8px;color:#94a3b8;">
-        <span class="ats-match-chip">Match {match_s}</span>
-        <span style="color:#475569;"> · </span>
-        <span class="ats-interest-chip">Interest {interest_s}</span>
-      </div>
-    </div>
+  <div class="ats-section-title">Rank #{rank} · {html.escape(jd_yr_txt)}</div>
+  <div class="ats-candidate-name" style="font-size:1.2rem;margin-bottom:4px;">👤 {name_line}</div>
+  <div style="color:#A0A3BD;font-size:0.9rem;font-weight:600;margin-bottom:10px;">{title_line}</div>
+  <div style="color:#A0A3BD;font-size:0.92rem;margin-bottom:14px;line-height:1.45;">
+    📍 {loc_line} &nbsp;|&nbsp; ⏳ <strong style="color:#FFFFFF;">{yr}</strong> yrs
+    &nbsp;·&nbsp; Loc fit <strong style="color:#4F8EF7;">{loc_fit}</strong>%
+    &nbsp;·&nbsp; Exp fit <strong style="color:#4F8EF7;">{exp_fit}</strong>%
   </div>
-  <div class="ats-section-title" style="margin-top:1.15rem;">Skills</div>
-  <div>{pills or '<span style="color:#64748b;">No skills on profile</span>'}</div>
-  <div style="margin-top:14px;font-size:0.93rem;color:#cbd5e1;line-height:1.55;">{sum_line}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px 22px;margin-bottom:12px;">
+    <div><span style="color:#A0A3BD;font-size:0.78rem;font-weight:700;text-transform:uppercase;">Match score</span><br/>
+      <span style="font-size:1.35rem;font-weight:800;color:#4F8EF7;">{match_s}</span></div>
+    <div><span style="color:#A0A3BD;font-size:0.78rem;font-weight:700;text-transform:uppercase;">Interest score</span><br/>
+      <span style="font-size:1.35rem;font-weight:800;color:#FFFFFF;">{interest_s}</span></div>
+    <div><span style="color:#A0A3BD;font-size:0.78rem;font-weight:700;text-transform:uppercase;">Final</span><br/>
+      <span class="ats-score-final {final_cls}" style="font-size:1.35rem;">{final_display_score}</span></div>
+  </div>
+  <div style="font-size:0.9rem;color:#FFFFFF;line-height:1.5;margin-bottom:6px;">
+    <span style="color:#3dd68c;">✔</span> <strong>Skills matched (must-have):</strong>
+    <span style="color:#A0A3BD;">{matched_txt}</span>
+  </div>
+  <div style="font-size:0.9rem;color:#FFFFFF;line-height:1.5;margin-bottom:10px;">
+    <span style="color:#f87171;">❌</span> <strong>Missing (must-have):</strong>
+    <span style="color:#A0A3BD;">{missing_txt}</span>
+  </div>
+  <div style="font-size:0.85rem;color:#6b6e8c;line-height:1.45;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">{sum_line}</div>
 </div>
 """
     st.markdown(card, unsafe_allow_html=True)
@@ -898,13 +973,14 @@ interest_weight_pct = 100 - match_weight_pct
 st.sidebar.caption(f"Interest weight: {interest_weight_pct}%")
 min_final_threshold = st.sidebar.slider("Min final score", 0, 100, 0, 5)
 st.sidebar.divider()
-st.sidebar.subheader("Search & filters")
-filter_skill = st.sidebar.text_input("Skill contains", placeholder="python")
+st.sidebar.subheader("ATS filters")
+min_exp_filter = st.sidebar.number_input("Min experience (years)", 0, 30, 0)
+max_exp_filter = st.sidebar.number_input("Max experience (years)", 0, 30, 30)
+filter_skill = st.sidebar.text_input("Required skill (contains)", placeholder="e.g. Python")
 filter_title = st.sidebar.text_input("Title contains", placeholder="engineer")
-filter_loc = st.sidebar.text_input("Location contains", placeholder="remote")
-min_exp_filter = st.sidebar.number_input("Min years exp", 0, 30, 0)
-max_exp_filter = st.sidebar.number_input("Max years exp", 0, 30, 30)
+filter_loc = st.sidebar.text_input("Location contains", placeholder="remote / city")
 remote_only = st.sidebar.toggle("Remote location only", value=False)
+strict_must_haves = st.sidebar.toggle("Require all JD must-have skills", value=False)
 st.sidebar.divider()
 if st.sidebar.button("Clear feedback & pipeline memory"):
     st.session_state["recruiter_feedback"] = {}
@@ -1103,6 +1179,10 @@ discovered = st.session_state.get("last_discovered", [])
 
 
 def passes_filters(row):
+    if strict_must_haves:
+        exp = row.get("explainability") or {}
+        if exp.get("missing_must_have"):
+            return False
     if filter_skill:
         blob = (row["title"] + row["candidate_summary"]).lower()
         for c in discovered:
@@ -1161,15 +1241,19 @@ if results:
         f"{top['name']} ({display_score(top)})" if top is not None else "—",
     )
 
+    if filtered_display:
+        render_top_candidate_insight(filtered_display, feedback, jd_data)
+
     dl1, dl2 = st.columns(2)
     with dl1:
         if filtered_display:
             csv_bytes = _ensure_download_bytes(results_to_csv(filtered_display))
             st.download_button(
-                "Export CSV",
+                "Download Shortlist (CSV)",
                 data=csv_bytes,
-                file_name="shortlist.csv",
+                file_name="talentscout_shortlist.csv",
                 mime="text/csv",
+                use_container_width=True,
             )
         else:
             st.caption("CSV export appears when at least one candidate matches filters.")
@@ -1180,10 +1264,11 @@ if results:
             pdf_bytes = _ensure_download_bytes(pdf_bytes)
         if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 0:
             st.download_button(
-                "Export PDF report",
+                "Download PDF report",
                 data=pdf_bytes,
-                file_name="shortlist.pdf",
+                file_name="talentscout_shortlist.pdf",
                 mime="application/pdf",
+                use_container_width=True,
             )
         elif FPDF is None:
             st.caption("PDF: add **fpdf2** to requirements and redeploy.")
@@ -1246,34 +1331,38 @@ if results:
                             for r in rows_view
                         ]
                         st.success("Saved — see **Saved shortlist** in the sidebar.")
-                for rank, item in enumerate(rows_view, start=1):
-                    fs = display_score(item)
-                    render_profile_card(item, rank, fs)
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Match", item["match_score"])
-                    c2.metric("Interest", item["interest_score"])
-                    c3.metric("Adjusted final", fs)
-                    st.progress(min(1.0, fs / 100.0))
-                    with st.expander("Recruiter actions & feedback"):
-                        b1, b2, b3 = st.columns(3)
-                        if b1.button("Approve", key=f"app_{item['name']}"):
-                            st.session_state["recruiter_feedback"][item["name"]] = 1
-                            st.rerun()
-                        if b2.button("Reject", key=f"rej_{item['name']}"):
-                            st.session_state["recruiter_feedback"][item["name"]] = -1
-                            st.rerun()
-                        if b3.button("Clear vote", key=f"clr_{item['name']}"):
-                            st.session_state["recruiter_feedback"].pop(item["name"], None)
-                            st.rerun()
-                        vote = feedback.get(item["name"])
-                        if vote == 1:
-                            st.success(
-                                "Strong fit: +3 display nudge for this session (re-run agent to refresh base model scores)."
-                            )
-                        elif vote == -1:
-                            st.warning(
-                                "Poor fit: −3 display nudge for this session (re-run agent to refresh base model scores)."
-                            )
+                for row_start in range(0, len(rows_view), 3):
+                    chunk = rows_view[row_start : row_start + 3]
+                    pad = 3 - len(chunk)
+                    chunk = chunk + [None] * pad
+                    col_slots = st.columns(3)
+                    for col_idx in range(3):
+                        item = chunk[col_idx]
+                        with col_slots[col_idx]:
+                            if item is None:
+                                st.empty()
+                                continue
+                            rank = row_start + col_idx + 1
+                            fs = display_score(item)
+                            render_profile_card(item, rank, fs)
+                            st.progress(min(1.0, fs / 100.0))
+                            exp_lbl = re.sub(r"[^\w\- ]", "", item["name"])[:40]
+                            with st.expander(f"#{rank} · {exp_lbl} — feedback"):
+                                b1, b2, b3 = st.columns(3)
+                                if b1.button("Approve", key=f"app_{rank}_{item['name']}"):
+                                    st.session_state["recruiter_feedback"][item["name"]] = 1
+                                    st.rerun()
+                                if b2.button("Reject", key=f"rej_{rank}_{item['name']}"):
+                                    st.session_state["recruiter_feedback"][item["name"]] = -1
+                                    st.rerun()
+                                if b3.button("Clear", key=f"clr_{rank}_{item['name']}"):
+                                    st.session_state["recruiter_feedback"].pop(item["name"], None)
+                                    st.rerun()
+                                vote = feedback.get(item["name"])
+                                if vote == 1:
+                                    st.success("+3 display nudge this session.")
+                                elif vote == -1:
+                                    st.warning("−3 display nudge this session.")
                     st.divider()
 
     with tabs[1]:
@@ -1298,6 +1387,12 @@ if results:
                     }
                 ).set_index("Metric")
             )
+            lp, ep, ab = exp.get("loc_penalty_pts", 0), exp.get("exp_penalty_pts", 0), exp.get("alignment_bonus_pts", 0)
+            if lp or ep or ab:
+                st.caption(
+                    f"Location / experience shaping in match score: −{lp} pts location gap, "
+                    f"−{ep} pts experience gap, +{ab} pts strong-alignment bonus."
+                )
             st.write("**Narrative:**", exp.get("reason", ""))
             st.write("**Domain:**", exp.get("domain_relevance_note", ""))
             st.write("**Experience (range vs JD):**", exp.get("experience_range_note", ""))
@@ -1379,19 +1474,77 @@ if results:
                 st.write(f"- {m}")
 
     with tabs[5]:
-        st.json(discovered)
+        st.subheader("JD analysis & discovery pool")
+        if not jd_data or not jd_data.get("role"):
+            st.info("Run the agent to parse the JD and load the discovery pool.")
+        else:
+            must = jd_data.get("must_have_skills") or []
+            nice = jd_data.get("nice_to_have_skills") or []
+            miny = jd_data.get("min_experience_years", 0)
+            maxy = jd_data.get("max_experience_years", 0) or 0
+            exp_line = f"{miny}+ years" if maxy <= 0 else f"{miny}–{maxy} years"
+            must_disp = ", ".join(must) if must else "—"
+            nice_disp = ", ".join(nice) if nice else "—"
+
+            gap_must = []
+            for m in must:
+                sk = str(m).lower()
+                found = False
+                for c in discovered:
+                    for s in c.get("skills") or []:
+                        if sk in str(s).lower() or str(s).lower() in sk:
+                            found = True
+                            break
+                    if found:
+                        break
+                if not found:
+                    gap_must.append(m)
+
+            st.markdown(
+                f"""
+<div class="ats-card" style="margin-bottom:1rem;">
+  <div class="ats-section-title">Parsed role (from JD)</div>
+  <p style="margin:0 0 6px 0;color:#FFFFFF;font-size:1.1rem;font-weight:700;">{html.escape(str(jd_data.get("role") or "—"))}</p>
+  <p style="margin:0;color:#A0A3BD;font-size:0.95rem;line-height:1.55;">
+    <strong style="color:#FFFFFF;">Experience:</strong> {html.escape(exp_line)}<br/>
+    <strong style="color:#FFFFFF;">Location / mode:</strong> {html.escape(str(jd_data.get("location") or "—"))}
+    · {html.escape(str(jd_data.get("work_mode") or "—"))}<br/>
+    <strong style="color:#FFFFFF;">Must-have skills:</strong> {html.escape(must_disp)}<br/>
+    <strong style="color:#FFFFFF;">Nice-to-have:</strong> {html.escape(nice_disp)}
+  </p>
+  <p style="margin:12px 0 0 0;color:#fbbf24;font-size:0.92rem;">
+    ⚠ <strong style="color:#FFFFFF;">Pool gap (no candidate lists this):</strong>
+    {html.escape(", ".join(gap_must) if gap_must else "— none detected in this pool")}
+  </p>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown(f"**Summary:** {jd_data.get('summary', '')}")
+            st.markdown(f"**Discovered candidates ({len(discovered)}):**")
+            if not discovered:
+                st.caption("No rows in the discovery pool for this run.")
+            else:
+                for c in discovered:
+                    sk = ", ".join((c.get("skills") or [])[:8])
+                    st.markdown(
+                        f"- **{c.get('name', '')}** — _{c.get('title', '')}_ · "
+                        f"{c.get('location', '')} · **{c.get('experience_years', 0)}** yrs · _{sk}_"
+                    )
+            with st.expander("Raw pool JSON (debug)"):
+                st.json(discovered)
 
 else:
     st.markdown(
         """
 <div class="ats-card" style="max-width:720px;">
   <div class="ats-section-title">Getting started</div>
-  <p style="color:#cbd5e1;margin:0 0 12px 0;line-height:1.6;font-size:0.98rem;">
-    <strong style="color:#f8fafc;">1.</strong> Paste a JD and choose a candidate source.<br/>
-    <strong style="color:#f8fafc;">2.</strong> Click <strong style="color:#60a5fa;">Run agent</strong>.<br/>
-    <strong style="color:#f8fafc;">3.</strong> Use <strong style="color:#f8fafc;">Shortlist</strong>,
-    <strong style="color:#f8fafc;">Explainability</strong>, <strong style="color:#f8fafc;">ATS pipeline</strong>,
-    <strong style="color:#f8fafc;">Analytics</strong>, and <strong style="color:#f8fafc;">JD coach</strong> tabs.
+  <p style="color:#A0A3BD;margin:0 0 12px 0;line-height:1.6;font-size:0.98rem;">
+    <strong style="color:#FFFFFF;">1.</strong> Paste a JD and choose a candidate source.<br/>
+    <strong style="color:#FFFFFF;">2.</strong> Click <strong style="color:#4F8EF7;">Run agent</strong>.<br/>
+    <strong style="color:#FFFFFF;">3.</strong> Use <strong style="color:#FFFFFF;">Shortlist</strong>,
+    <strong style="color:#FFFFFF;">Explainability</strong>, <strong style="color:#FFFFFF;">ATS pipeline</strong>,
+    <strong style="color:#FFFFFF;">Analytics</strong>, and <strong style="color:#FFFFFF;">JD coach</strong> tabs.
   </p>
 </div>
         """,
