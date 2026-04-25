@@ -48,7 +48,7 @@ For a concise changelog (including scoring and UX refinements), see **[RELEASE_N
 | Stage | What happens |
 |:------|:---------------|
 | **Intake** | Recruiter pastes a JD and chooses a **candidate source**: built-in demo pool, **JSON** list of profiles, or one or more **PDF** resumes (text extracted with `pypdf`). |
-| **Parse** | **Gemini** returns structured JSON: role, `must_have_skills` / `nice_to_have_skills`, experience min/max, location, work mode, seniority, summary. Lists are normalized and deduplicated; if must-haves are empty, the app can infer a block from the JD text. |
+| **Parse** | **Hybrid:** labeled lines (`Role:`, `Experience:`, `Location:`, `Work mode:`, `Salary:` / `Compensation:`, etc.) are extracted **first** with deterministic regex (regex wins on merge). **Gemini** then fills JSON (skills, narrative fields, gaps). Lists are normalized and deduplicated; if must-haves are empty, the app can infer a block from the JD text. Optional **parse data quality** banner flags generic or missing critical fields (no impact on scores). |
 | **Coach (parallel)** | **JD coach** suggestions (clarity score, improvements, gaps) are generated from the JD text plus the structured parse. |
 | **Discover** | Rule-based **shortlist** of the pool: must-have overlap and experience when the JD lists must-haves; **experience-based** gate when no must-haves are parsed (avoids fake skill overlap). |
 | **Score** | For each discovered candidate: **match** (skills, experience band, location/work mode, small penalties/bonuses, bounded LLM adjustment with narrative) and **interest** (simulated 8-turn conversation + signals). |
@@ -72,7 +72,7 @@ For a concise changelog (including scoring and UX refinements), see **[RELEASE_N
 
 ### Filters and governance
 
-- **Sidebar ATS filters** — Min/max experience, **required skill** (unified matcher on profile + title/summary fallback), title contains, location contains, remote-only toggle, **strict: require all JD must-haves** on the profile.
+- **Sidebar ATS filters** — Min/max experience, **required skill** (unified matcher on profile + title/summary fallback), title contains, location contains, remote-only toggle, **strict: require all JD must-haves** on the profile, optional **soft pay context on roster** (green card frame when a JD pay line was parsed; amber + dim when none — informational only, does not hide candidates).
 - **Weights and thresholds** — Shortlist size, match vs interest **percentage split**, minimum final score for filtering the table.
 
 ### Depth and exports
@@ -82,11 +82,16 @@ For a concise changelog (including scoring and UX refinements), see **[RELEASE_N
 - **Analytics tab** — Skill frequency, experience buckets, geography for the current view.
 - **JD coach tab** — Human-readable parsed JD card plus clarity score and suggestion cards (no JSON-first dump).
 - **Discovery tab** — Parsed JD with **pool gap** (must-haves no one in the pool claims), role summary, and **scannable pool cards** with skill pills.
-- **Exports** — CSV shortlist; PDF report when `fpdf2` is installed and generation succeeds.
+- **Exports** — CSV shortlist with RFC-style quoting for messy text; includes **`jd_compensation_summary`** (JD-level, repeated per row for audit/ATS import). PDF report includes an optional **JD compensation** line under role context when `fpdf2` is available. **Compensation is not used in match scoring.**
 
 ---
 
 ## Matching, scoring, and trust
+
+### JD field extraction (hybrid)
+
+- **Regex first** for common labels (`Role:`, `Job location:`, `Work mode:`, `Experience:`, `Salary:` / `Compensation:`, and extended aliases). Those values **override** the model on conflict so structured JDs behave deterministically.
+- **`compensation_summary`** is **informational** (UI card, exports, soft roster styling)—it does **not** change match, interest, or final scores.
 
 ### Skill lists
 
@@ -119,7 +124,7 @@ For a concise changelog (including scoring and UX refinements), see **[RELEASE_N
 | **Header** | Title, tagline, collapsible **Release notes** (loaded from `RELEASE_NOTES.md`). |
 | **Main column** | JD text area, **Run agent**, results when a run exists. |
 | **Side column** | Candidate source radio (built-in / JSON / PDF) and source-specific controls. |
-| **Sidebar** | Shortlist size, weights, min final score, ATS filters, clear feedback, saved shortlist. |
+| **Sidebar** | Shortlist size, weights, min final score, ATS filters, soft pay-context toggle, clear feedback, saved shortlist. |
 | **Tabs** | Shortlist · Explainability · Pipeline · Analytics · JD coach · Discovery. |
 
 ---
@@ -153,7 +158,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[JD + candidate source] --> B[parse_jd — Gemini JSON]
+    A[JD + candidate source] --> B[parse_jd — regex labels + Gemini JSON]
     B --> C[Structured JD]
     C --> D[suggest_jd_improvements — JD coach]
     C --> E[discover_candidates — rules]
@@ -307,6 +312,7 @@ Role: AI/ML Engineer
 Location: Remote (India)
 Work mode: Remote
 Experience: 3+ years
+Compensation: Competitive; details on discussion
 
 Must have: Python, Machine Learning, SQL, model deployment
 Nice to have: NLP, MLOps, cloud (AWS/GCP/Azure)
@@ -337,8 +343,8 @@ Illustrative ranking (numbers vary by model run):
 | **Ranked shortlist** | Match score, interest score, weighted final, pipeline stage; filtered by sidebar rules and optional tab chips. |
 | **Explainability** | Matched and missing must-haves, nice-to-have signal, overlap and fit **%**, narrative bullets, optional penalty/bonus line, transcript expander. |
 | **Simulated outreach** | Eight alternating messages plus **signals** (e.g. enthusiasm, availability, self-assessed fit) as readable text. |
-| **Parsed JD** | Role card: seniority, experience band, location/mode, must-have and nice-to-have counts and lists, optional pool-gap callout on Discovery. |
-| **Downloads** | CSV of the current analytical shortlist; PDF summary when supported. |
+| **Parsed JD** | Role card: seniority, experience band, location/mode, must-have and nice-to-have counts and lists, optional **compensation** line when parsed, optional pool-gap callout on Discovery. |
+| **Downloads** | CSV shortlist (including **`jd_compensation_summary`**); PDF summary with optional pay line when supported. |
 
 ---
 

@@ -310,6 +310,201 @@ def extract_years(text):
     return int(match.group(1)) if match else 0
 
 
+def _clean_jd_field_value(s, max_len=240):
+    """Trim, collapse whitespace for display fields."""
+    if s is None:
+        return ""
+    t = str(s).strip()
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"^[•\-\*\.\"'\s]+|[•\-\*\.\"'\s]+$", "", t)
+    if max_len and len(t) > max_len:
+        t = t[: max_len - 1].rstrip() + "…"
+    return t
+
+
+def _normalize_work_mode_display(s):
+    """Map common phrases to stable UI labels."""
+    if not s or not str(s).strip():
+        return "Not specified"
+    low = str(s).lower()
+    if re.search(r"\bhybrid\b", low):
+        return "Hybrid"
+    if re.search(r"\bon[- ]?site\b|\bonsite\b|\bin[- ]?office\b", low):
+        return "On-site"
+    if re.search(r"\bremote\b", low):
+        return "Remote"
+    t = _clean_jd_field_value(s, 80)
+    return t if t else "Not specified"
+
+
+def _parse_experience_value_to_min_max(val):
+    """
+    Parse a single experience field value into (min_years, max_years_or_None).
+    max None means 'do not override LLM max'; 0 means open-ended upper (matches app semantics).
+    """
+    if not val or not str(val).strip():
+        return None, None
+    v = str(val).strip()
+    m_range = re.search(r"(\d+)\s*(?:[-–]|\s+to\s+)\s*(\d+)", v, re.IGNORECASE)
+    if m_range:
+        return int(m_range.group(1)), int(m_range.group(2))
+    m_plus = re.search(r"(\d+)\s*\+", v)
+    if m_plus:
+        return int(m_plus.group(1)), 0
+    y = extract_years(v)
+    if y:
+        return y, None
+    return None, None
+
+
+def extract_jd_labeled_fields_regex(jd_text):
+    """
+    Deterministic extraction from common labeled JD lines (Role:, Experience:, etc.).
+    Only keys that are clearly present in the text are returned — caller merges over LLM output.
+    """
+    out = {}
+    if not jd_text or not str(jd_text).strip():
+        return out
+
+    role_keys = frozenset(
+        {
+            "role",
+            "job title",
+            "position",
+            "title",
+            "job role",
+            "position title",
+            "opening",
+        }
+    )
+    loc_keys = frozenset(
+        {
+            "location",
+            "job location",
+            "work location",
+            "office location",
+            "site location",
+            "reporting location",
+            "base",
+            "office",
+            "worksite",
+            "work site",
+            "based in",
+            "city",
+            "region",
+        }
+    )
+    mode_keys = frozenset(
+        {
+            "work mode",
+            "work style",
+            "work arrangement",
+            "remote status",
+            "work type",
+            "employment type",
+            "workplace",
+            "office attendance",
+        }
+    )
+    comp_keys = frozenset(
+        {
+            "compensation",
+            "salary",
+            "salary range",
+            "pay",
+            "pay range",
+            "remuneration",
+            "package",
+            "total compensation",
+            "tc",
+            "comp",
+        }
+    )
+    exp_keys = frozenset(
+        {
+            "experience",
+            "years of experience",
+            "years experience",
+            "yoe",
+            "minimum experience",
+            "min experience",
+            "experience required",
+            "experience level",
+            "required experience",
+        }
+    )
+    min_exp_keys = frozenset({"min experience", "minimum experience", "minimum years", "min years"})
+    max_exp_keys = frozenset({"max experience", "maximum experience", "maximum years", "max years"})
+    seniority_keys = frozenset({"seniority", "level", "grade"})
+    summary_keys = frozenset({"summary", "role summary", "position summary"})
+
+    for raw in str(jd_text).splitlines():
+        line = raw.strip()
+        if not line or ":" not in line:
+            continue
+        key_part, _, value_part = line.partition(":")
+        key_norm = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]\s*$", "", key_part).strip()
+        key_norm = re.sub(r"\s+", " ", key_norm).lower()
+        val = value_part.strip()
+        if not val:
+            continue
+        val_one_line = val.split("\n")[0].strip()
+
+        if key_norm in role_keys:
+            r = _clean_jd_field_value(val_one_line, 160)
+            if r and len(r) >= 2:
+                out["role"] = r
+        elif key_norm in loc_keys:
+            loc = _clean_jd_field_value(val_one_line, 160)
+            if loc:
+                out["location"] = loc
+        elif key_norm in mode_keys:
+            out["work_mode"] = _normalize_work_mode_display(val_one_line)
+        elif key_norm in exp_keys:
+            mn, mx = _parse_experience_value_to_min_max(val_one_line)
+            if mn is not None:
+                out["min_experience_years"] = mn
+            if mx is not None:
+                out["max_experience_years"] = mx
+        elif key_norm in min_exp_keys:
+            y = extract_years(val_one_line)
+            if y:
+                out["min_experience_years"] = y
+        elif key_norm in max_exp_keys:
+            y = extract_years(val_one_line)
+            if y:
+                out["max_experience_years"] = y
+        elif key_norm in seniority_keys:
+            s = _clean_jd_field_value(val_one_line, 80)
+            if s:
+                out["seniority"] = s
+        elif key_norm in summary_keys:
+            s = _clean_jd_field_value(val, 500)
+            if s:
+                out["summary"] = s
+        elif key_norm in comp_keys:
+            c = _clean_jd_field_value(val_one_line, 200)
+            if c:
+                out["compensation_summary"] = c
+
+    return out
+
+
+def merge_regex_jd_fields_into_parsed(regex_fields, parsed):
+    """Labeled regex wins over LLM fields when the regex produced a value."""
+    if not regex_fields:
+        return parsed
+    for k, v in regex_fields.items():
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        if isinstance(v, int) and k.endswith("_years") and v < 0:
+            continue
+        parsed[k] = v
+    return parsed
+
+
 def parse_json_response(raw_text):
     text = (raw_text or "").strip()
     if text.startswith("```"):
@@ -572,11 +767,24 @@ def location_compatibility_score(jd_location, cand_location, jd_work_mode=None):
     return clamp_score(score), note
 
 
-def results_to_csv(rows):
+def _csv_cell(value):
+    """RFC-style quoting when commas, quotes, or newlines appear."""
+    s = str(value if value is not None else "")
+    if any(c in s for c in ('"', ",", "\n", "\r")):
+        return '"' + s.replace('"', '""') + '"'
+    return s
+
+
+def results_to_csv(rows, jd_data=None):
+    """Per-candidate shortlist; repeats JD-level compensation on each row for audit / ATS import."""
+    jd_comp = ""
+    if jd_data:
+        jd_comp = (jd_data.get("compensation_summary") or "").strip()
     output = StringIO()
     output.write(
         "rank,name,title,location,match_score,interest_score,final_score,pipeline_stage,"
-        "matched_must,missing_must,matched_nice,skill_overlap_pct,exp_fit_pct,loc_fit_pct\n"
+        "matched_must,missing_must,matched_nice,skill_overlap_pct,exp_fit_pct,loc_fit_pct,"
+        "jd_compensation_summary\n"
     )
     for idx, row in enumerate(rows, start=1):
         exp = row["explainability"]
@@ -585,10 +793,11 @@ def results_to_csv(rows):
         matched_nice = "|".join(exp["matched_nice_to_have"])
         stage = row.get("pipeline_stage", "Shortlisted")
         output.write(
-            f"{idx},{row['name']},{row['title']},{row['location']},{row['match_score']},"
-            f"{row['interest_score']},{row['final_score']},{stage},"
-            f"{matched_must},{missing_must},{matched_nice},"
-            f"{exp.get('skill_overlap_pct', '')},{exp.get('experience_fit_pct', '')},{exp.get('location_fit_pct', '')}\n"
+            f"{idx},{_csv_cell(row['name'])},{_csv_cell(row['title'])},{_csv_cell(row['location'])},"
+            f"{row['match_score']},{row['interest_score']},{row['final_score']},{_csv_cell(stage)},"
+            f"{_csv_cell(matched_must)},{_csv_cell(missing_must)},{_csv_cell(matched_nice)},"
+            f"{exp.get('skill_overlap_pct', '')},{exp.get('experience_fit_pct', '')},{exp.get('location_fit_pct', '')},"
+            f"{_csv_cell(jd_comp)}\n"
         )
     return output.getvalue().encode("utf-8")
 
@@ -620,7 +829,7 @@ def _ensure_download_bytes(data):
     return bytes(data)
 
 
-def build_shortlist_pdf(rows, jd_title, feedback_map):
+def build_shortlist_pdf(rows, jd_title, feedback_map, jd_compensation_summary=None):
     if FPDF is None:
         return None
     try:
@@ -631,6 +840,11 @@ def build_shortlist_pdf(rows, jd_title, feedback_map):
         pdf.cell(0, 10, _latin1_pdf_text("TalentScout AI - Shortlist Report", 120), ln=True)
         pdf.set_font("Helvetica", "", 10)
         pdf.cell(0, 6, _latin1_pdf_text(f"Role context: {jd_title}", 120), ln=True)
+        comp = (jd_compensation_summary or "").strip()
+        if comp:
+            pdf.set_font("Helvetica", "I", 9)
+            pdf.cell(0, 5, _latin1_pdf_text(f"JD compensation (informational): {comp}", 140), ln=True)
+            pdf.set_font("Helvetica", "", 10)
         pdf.ln(4)
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(40, 8, "Name", border=1)
@@ -656,6 +870,8 @@ def build_shortlist_pdf(rows, jd_title, feedback_map):
 
 
 def parse_jd(jd_text):
+    """Hybrid parse: labeled-line regex first, then Gemini JSON; regex wins on overlap."""
+    regex_fields = extract_jd_labeled_fields_regex(jd_text)
     prompt = f"""
 Extract structured hiring requirements from the Job Description.
 Return valid JSON only:
@@ -668,32 +884,44 @@ Return valid JSON only:
   "location": "location or Remote",
   "work_mode": "Remote|Hybrid|On-site|Not specified",
   "seniority": "Intern/Junior/Mid/Senior/Lead",
-  "summary": "1-2 lines"
+  "summary": "1-2 lines",
+  "compensation_summary": "short free-text comp line if stated, else empty string"
 }}
 
 Rules:
 - must_have_skills and nice_to_have_skills MUST be JSON arrays of strings.
 - Put ONE skill per array element (e.g. ["Python", "SQL"]); never one comma-joined string.
 - If the JD lists skills in a paragraph, split them into separate array entries.
+- If the JD already states Role / Experience / Location / Work mode on labeled lines, keep those values consistent in your JSON.
 
 Job Description:
 {jd_text}
 """
     fallback = {
-        "role": "Unknown Role",
+        "role": regex_fields.get("role") or "Unknown Role",
         "must_have_skills": [],
         "nice_to_have_skills": [],
-        "min_experience_years": 0,
-        "max_experience_years": 0,
-        "location": "Not specified",
-        "work_mode": "Not specified",
-        "seniority": "Not specified",
-        "summary": "Could not parse JD reliably.",
+        "min_experience_years": int(regex_fields["min_experience_years"])
+        if "min_experience_years" in regex_fields
+        else 0,
+        "max_experience_years": int(regex_fields["max_experience_years"])
+        if "max_experience_years" in regex_fields
+        else 0,
+        "location": regex_fields.get("location") or "Not specified",
+        "work_mode": regex_fields.get("work_mode") or "Not specified",
+        "seniority": regex_fields.get("seniority") or "Not specified",
+        "summary": regex_fields.get("summary") or "Could not parse JD reliably.",
+        "compensation_summary": regex_fields.get("compensation_summary") or "",
     }
     parsed = safe_model_json(prompt, fallback)
-    for _k in ("role", "location", "work_mode", "seniority", "summary"):
+    merge_regex_jd_fields_into_parsed(regex_fields, parsed)
+
+    for _k in ("role", "location", "work_mode", "seniority", "summary", "compensation_summary"):
         if isinstance(parsed.get(_k), str):
             parsed[_k] = parsed[_k].strip()
+            if _k == "work_mode":
+                parsed[_k] = _normalize_work_mode_display(parsed[_k])
+
     parsed["must_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("must_have_skills")))
     parsed["nice_to_have_skills"] = dedupe_skills_preserve_order(parse_list(parsed.get("nice_to_have_skills")))
     if not parsed["must_have_skills"]:
@@ -701,6 +929,8 @@ Job Description:
     parsed["min_experience_years"] = extract_years(parsed.get("min_experience_years", 0))
     mx = parsed.get("max_experience_years", 0)
     parsed["max_experience_years"] = extract_years(mx) if mx else 0
+    cs = parsed.get("compensation_summary", "")
+    parsed["compensation_summary"] = str(cs).strip() if cs is not None else ""
     return parsed
 
 
@@ -773,6 +1003,76 @@ def jd_pool_skill_gaps(must_have_list, discovered_pool):
     return gap
 
 
+_JD_GENERIC_STRINGS = frozenset(
+    {
+        "",
+        "—",
+        "-",
+        "n/a",
+        "na",
+        "tbd",
+        "unknown",
+        "unknown role",
+        "not specified",
+        "unspecified",
+        "none",
+    }
+)
+
+
+def jd_parse_quality_flags(jd_data):
+    """
+    Return human-facing issue codes when parsed JD fields look missing or placeholder-like.
+    Does not affect scoring; for transparency only.
+    """
+    if not jd_data:
+        return []
+    issues = []
+    role = (jd_data.get("role") or "").strip()
+    if not role or role.lower() in _JD_GENERIC_STRINGS:
+        issues.append("role")
+    loc = (jd_data.get("location") or "").strip()
+    if not loc or loc.lower() in _JD_GENERIC_STRINGS:
+        issues.append("location")
+    wm = (jd_data.get("work_mode") or "").strip()
+    if not wm or wm.lower() in _JD_GENERIC_STRINGS:
+        issues.append("work_mode")
+    if not (jd_data.get("must_have_skills") or []):
+        issues.append("must_have_skills")
+    mn = int(jd_data.get("min_experience_years", 0) or 0)
+    mx = int(jd_data.get("max_experience_years", 0) or 0)
+    if mn == 0 and mx == 0:
+        issues.append("experience_band")
+    return issues
+
+
+def render_jd_parse_quality_banner(jd_data):
+    flags = jd_parse_quality_flags(jd_data)
+    if not flags:
+        return
+    labels = {
+        "role": "role / title",
+        "location": "location",
+        "work_mode": "work mode",
+        "must_have_skills": "must-have skills",
+        "experience_band": "experience band (years)",
+    }
+    txt = ", ".join(labels.get(f, f) for f in flags)
+    st.markdown(
+        f"""
+<div class="jd-coach-card" style="border-left:4px solid #f59e0b;margin-bottom:0.85rem;">
+  <p style="margin:0;color:#fde68a;font-size:0.88rem;line-height:1.55;">
+    <strong style="color:#f4f6ff;">Parse data quality</strong> —
+    these fields look missing or generic: <span style="color:#e7e9f7;">{html.escape(txt)}</span>.
+    Add clearer labeled lines in the JD (e.g. <code style="font-size:0.82rem;">Role:</code>,
+    <code style="font-size:0.82rem;">Location:</code>) or use the <strong style="color:#f4f6ff;">JD coach</strong> tab.
+  </p>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_jd_human_card(jd_data, discovered=None, *, show_pool_gap=False):
     """Human-readable JD parse (no JSON) for recruiters."""
     if not jd_data or not jd_data.get("role"):
@@ -787,6 +1087,13 @@ def render_jd_human_card(jd_data, discovered=None, *, show_pool_gap=False):
     summ = (jd_data.get("summary") or "").strip()
     summ_html = f'<p style="margin:10px 0 0 0;color:#c4c8e0;font-size:0.92rem;line-height:1.55;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">{html.escape(summ)}</p>' if summ else ""
     senior = html.escape(str(jd_data.get("seniority") or "—"))
+    comp = (jd_data.get("compensation_summary") or "").strip()
+    comp_html = ""
+    if comp:
+        comp_html = f"""
+  <p style="margin:10px 0 0 0;color:#c4c8e0;font-size:0.9rem;line-height:1.55;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">
+    <strong style="color:#f4f6ff;">Compensation (from JD):</strong> {html.escape(comp)}
+  </p>"""
     gap_block = ""
     if show_pool_gap and discovered is not None:
         gap_must = jd_pool_skill_gaps(must, discovered)
@@ -809,7 +1116,7 @@ def render_jd_human_card(jd_data, discovered=None, *, show_pool_gap=False):
     · {html.escape(str(jd_data.get("work_mode") or "—"))}<br/>
     <strong style="color:#f4f6ff;">Must-have ({len(must)}):</strong> {html.escape(must_disp)}<br/>
     <strong style="color:#f4f6ff;">Nice-to-have ({len(nice)}):</strong> {html.escape(nice_disp)}
-  </p>{summ_html}{gap_block}
+  </p>{summ_html}{comp_html}{gap_block}
 </div>
         """,
         unsafe_allow_html=True,
@@ -1161,7 +1468,20 @@ def passes_skill_refine(row, selected_skills):
     return True
 
 
-def render_profile_card(item, rank, final_display_score):
+def pay_context_card_style(toggle_on, jd_data):
+    """
+    Optional soft visual on shortlist cards: highlight when JD lists compensation, dim when absent.
+    Returns a safe HTML fragment for the opening <div ...> of the card (empty string = default).
+    """
+    if not toggle_on or not jd_data:
+        return ""
+    comp = (jd_data.get("compensation_summary") or "").strip()
+    if comp:
+        return ' style="border:1px solid rgba(52,211,153,0.55);box-shadow:0 0 28px rgba(34,197,94,0.14);"'
+    return ' style="opacity:0.78;filter:saturate(0.9);border:1px solid rgba(251,191,36,0.35);"'
+
+
+def render_profile_card(item, rank, final_display_score, card_wrap_style=""):
     """ATS candidate card — fixed layout for scanability (matches common ATS tools)."""
     exp = item.get("explainability") or {}
     loc_line = html.escape(str(item.get("location", "")))
@@ -1205,8 +1525,9 @@ def render_profile_card(item, rank, final_display_score):
     yr_warn = ""
     if jmin and yr < jmin:
         yr_warn = f'<p style="margin:8px 0 0 0;color:#FBBF24;font-size:0.82rem;">⚠ Fewer years than JD minimum ({yr} vs {jmin}+) — scoring reflects this.</p>'
+    wrap = card_wrap_style if isinstance(card_wrap_style, str) else ""
     card = f"""
-<div class="ats-card">
+<div class="ats-card"{wrap}>
   <div class="ats-section-title">Rank #{rank} · {html.escape(jd_yr_txt)}</div>
   <div style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;color:#f4f6ff;line-height:1.2;margin-bottom:4px;">{name_line}</div>
   <div style="color:#c4c8e0;font-size:0.88rem;margin-bottom:10px;">{title_line}</div>
@@ -1317,6 +1638,12 @@ filter_title = st.sidebar.text_input("Title contains", placeholder="engineer")
 filter_loc = st.sidebar.text_input("Location (contains)", placeholder="city / remote")
 remote_only = st.sidebar.toggle("Remote location only", value=False)
 strict_must_haves = st.sidebar.toggle("Require all JD must-have skills", value=False)
+pay_context_viz = st.sidebar.toggle(
+    "Soft pay context on roster",
+    value=False,
+    help="When on: green accent on shortlist cards if the parsed JD includes pay/comp text; "
+    "amber tint + slight dim if no pay line was parsed. Informational only — does not filter.",
+)
 st.sidebar.divider()
 if st.sidebar.button("Clear feedback & pipeline memory"):
     st.session_state["recruiter_feedback"] = {}
@@ -1560,6 +1887,9 @@ if results:
     def display_score(row):
         return display_final_score(row, feedback)
 
+    if jd_data:
+        render_jd_parse_quality_banner(jd_data)
+
     filtered_display.sort(key=display_score, reverse=True)
 
     if not filtered_display:
@@ -1591,7 +1921,7 @@ if results:
     dl1, dl2 = st.columns(2)
     with dl1:
         if filtered_display:
-            csv_bytes = _ensure_download_bytes(results_to_csv(filtered_display))
+            csv_bytes = _ensure_download_bytes(results_to_csv(filtered_display, jd_data))
             st.download_button(
                 "Download CSV",
                 data=csv_bytes,
@@ -1604,7 +1934,12 @@ if results:
     with dl2:
         pdf_bytes = None
         if filtered_display and FPDF is not None:
-            pdf_bytes = build_shortlist_pdf(filtered_display, jd_data.get("role", "Role"), feedback)
+            pdf_bytes = build_shortlist_pdf(
+                filtered_display,
+                jd_data.get("role", "Role"),
+                feedback,
+                jd_data.get("compensation_summary") or "",
+            )
             pdf_bytes = _ensure_download_bytes(pdf_bytes)
         if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 0:
             st.download_button(
@@ -1649,6 +1984,14 @@ if results:
     with tabs[0]:
         st.markdown("##### Shortlist · refine & decide")
         st.caption("Sidebar ATS filters apply first. Use chips below to require skills on the profile.")
+        if pay_context_viz:
+            comp_ok = bool((jd_data.get("compensation_summary") or "").strip())
+            st.caption(
+                "Pay context (soft): roster cards use a **green** frame when the JD includes a parsed pay line, "
+                "or **amber + dim** when no pay line was extracted — exports still include `jd_compensation_summary` when present."
+                if comp_ok
+                else "Pay context (soft): **amber + dim** — parsed JD has no compensation line; exports may have an empty pay column."
+            )
         rows_view = []
         if not filtered_display:
             st.warning("No candidates match your sidebar filters — widen experience or clear text filters.")
@@ -1690,7 +2033,8 @@ if results:
                                 continue
                             rank = row_start + col_idx + 1
                             fs = display_score(item)
-                            render_profile_card(item, rank, fs)
+                            wrap = pay_context_card_style(pay_context_viz, jd_data)
+                            render_profile_card(item, rank, fs, wrap)
                             st.progress(min(1.0, fs / 100.0))
                             exp_lbl = re.sub(r"[^\w\- ]", "", item["name"])[:40]
                             with st.expander(f"#{rank} · {exp_lbl} — feedback"):
