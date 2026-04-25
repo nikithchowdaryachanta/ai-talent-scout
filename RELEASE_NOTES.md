@@ -34,6 +34,7 @@ The application has been refined for **accuracy, consistency, and professional u
 
 ### UX and decisions
 
+- **Shortlist size** control allows up to **30** candidates per run (default **10**) for larger JSON/PDF pools.
 - **Recommended candidate** is shown prominently; **ranking and displayed final scores** use the same logic everywhere.
 - Sidebar filters and in-tab skill chips use the **same matching rules** as JD-vs-profile skill comparison.
 - **Soft pay context on roster** (sidebar toggle): shortlist cards get a **green** frame when a pay line was parsed from the JD, or an **amber + dim** treatment when none was — **no filtering**, full transparency.

@@ -73,7 +73,7 @@ For a concise changelog (including scoring and UX refinements), see **[RELEASE_N
 ### Filters and governance
 
 - **Sidebar ATS filters** — Min/max experience, **required skill** (unified matcher on profile + title/summary fallback), title contains, location contains, remote-only toggle, **strict: require all JD must-haves** on the profile, optional **soft pay context on roster** (green card frame when a JD pay line was parsed; amber + dim when none — informational only, does not hide candidates).
-- **Weights and thresholds** — Shortlist size, match vs interest **percentage split**, minimum final score for filtering the table.
+- **Weights and thresholds** — Shortlist size (**1–30** candidates per run, default **10**), match vs interest **percentage split**, minimum final score for filtering the table. (Large limits help JSON/PDF pools; the built-in demo pool has fewer profiles.)
 
 ### Depth and exports
 

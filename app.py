@@ -1623,7 +1623,7 @@ with st.expander("Release notes", expanded=False):
     st.markdown(_release_notes_md)
 
 st.sidebar.header("Controls")
-num_candidates = st.sidebar.slider("Shortlist size", 1, 12, 6)
+num_candidates = st.sidebar.slider("Shortlist size", 1, 30, 10)
 match_weight_pct = st.sidebar.slider("Match weight %", 0, 100, 60, 5)
 interest_weight_pct = 100 - match_weight_pct
 st.sidebar.caption(f"Interest weight: {interest_weight_pct}%")
