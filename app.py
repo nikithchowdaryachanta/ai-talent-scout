@@ -716,8 +716,11 @@ def score_match_with_explainability(jd_data, candidate):
     base_match = clamp_score((must_ratio * 50) + (nice_ratio * 20) + (exp_ratio * 15) + (loc_score / 100 * 15))
 
     # Explicit location / experience modifiers (penalty for mismatch, small bonus when both strong)
-    loc_penalty_pts = max(0, min(12, int(round((60 - loc_score) * 0.22))))
-    exp_penalty_pts = max(0, min(12, int(round((60 - experience_fit_pct) * 0.2))))
+    loc_penalty_pts = max(0, min(14, int(round((62 - loc_score) * 0.26))))
+    exp_penalty_pts = max(0, min(14, int(round((62 - experience_fit_pct) * 0.24))))
+    # Extra realism: years clearly below JD minimum
+    if min_y > 0 and cand_y < min_y:
+        exp_penalty_pts = min(14, exp_penalty_pts + min(6, 2 + (min_y - cand_y)))
     alignment_bonus_pts = 0
     if loc_score >= 86 and experience_fit_pct >= 84:
         alignment_bonus_pts = 5
@@ -909,47 +912,52 @@ def _top_skill_in_rows(rows):
 
 
 def render_top_candidate_insight(rows, feedback_map, jd_data):
-    """Decision-focused callout: top pick + why selected (recruiter narrative)."""
+    """Top decision block: recommended hire + why (ATS-style)."""
     if not rows:
         return
     top = max(rows, key=lambda r: display_final_score(r, feedback_map))
     fs = display_final_score(top, feedback_map)
     exp = top.get("explainability") or {}
     mm = exp.get("matched_must_have") or []
-    skill_line = _format_skill_phrase(mm[:8]) if mm else "Skills evaluated vs JD must-haves"
+    skill_short = _format_skill_phrase(mm[:6]) if mm else "per JD must-haves"
     bullets = []
     if mm:
-        bullets.append(f"Strong skill alignment ({skill_line})")
+        bullets.append(f"Strong skill match ({skill_short})")
     elif exp.get("skill_overlap_pct", 0) >= 55:
-        bullets.append("Solid skill overlap vs the JD profile")
-    if exp.get("experience_fit_pct", 0) >= 68:
-        bullets.append("Experience matches stated requirements")
-    if exp.get("location_fit_pct", 0) >= 68:
-        bullets.append("Location & work mode compatible with the JD")
-    if top.get("interest_score", 0) >= 68:
-        bullets.append("High interest score from simulated outreach")
-    if exp.get("matched_nice_to_have"):
-        bullets.append("Adds nice-to-have depth beyond core must-haves")
-    if not bullets:
-        bullets.append("Highest weighted composite score in the current filtered view")
+        bullets.append("Solid skill match vs the JD profile")
+    if exp.get("experience_fit_pct", 0) >= 65:
+        bullets.append("Experience aligned with the role")
+    else:
+        bullets.append("Experience vs JD reviewed — see candidate card for detail")
+    if exp.get("location_fit_pct", 0) >= 65:
+        bullets.append("Location / work mode fits the JD")
+    if top.get("interest_score", 0) >= 65:
+        bullets.append("High interest score from outreach simulation")
+    elif top.get("interest_score", 0) >= 45:
+        bullets.append("Moderate interest — worth a screening call")
+    bullets = bullets[:5]
     reason = html.escape(str(top.get("interest_reason", "") or "").strip())
     matched = _format_skill_phrase(mm)
     mc = _traffic_color(top.get("match_score", 0))
     ic = _traffic_color(top.get("interest_score", 0))
-    bullets_html = "".join(f"<li>{html.escape(b)}</li>" for b in bullets[:6])
+    fc = _traffic_color(fs)
+    bullets_html = "".join(f"<li>{html.escape(b)}</li>" for b in bullets)
     st.markdown(
         f"""
 <div class="insight-card">
-  <h4>🏆 Top candidate: {html.escape(str(top.get("name", "")))}</h4>
-  <p style="margin:0;color:#A0A3BD;font-size:0.95rem;">
-    Composite <strong style="color:#4F8EF7;">{fs}</strong>
-    · Match <strong style="color:{mc};">{top.get("match_score", "—")}</strong>
-    · Interest <strong style="color:{ic};">{top.get("interest_score", "—")}</strong>
+  <h4>🏆 Recommended Candidate: {html.escape(str(top.get("name", "")))}</h4>
+  <p style="margin:4px 0 0 0;color:#A0A3BD;font-size:0.92rem;">
+    <span style="color:#FFFFFF;font-weight:600;">Final score:</span>
+    <span style="color:{fc};font-weight:800;font-size:1.15rem;"> {fs}</span>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <span style="color:#FFFFFF;font-weight:600;">Match:</span> <span style="color:{mc};font-weight:800;">{top.get("match_score", "—")}</span>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <span style="color:#FFFFFF;font-weight:600;">Interest:</span> <span style="color:{ic};font-weight:800;">{top.get("interest_score", "—")}</span>
   </p>
-  <p style="margin:12px 0 6px 0;color:#FFFFFF;font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Why selected?</p>
-  <ul style="list-style:disc;">{bullets_html}</ul>
-  <p class="sub">Must-haves covered: {matched}</p>
-  {f'<p class="sub">Interest signal: {reason}</p>' if reason else ''}
+  <p style="margin:14px 0 6px 0;color:#FFFFFF;font-size:0.9rem;font-weight:700;">Why?</p>
+  <ul style="list-style:disc;color:#A0A3BD;margin:0;padding-left:1.2rem;line-height:1.6;">{bullets_html}</ul>
+  <p class="sub">Matched JD skills: {matched}</p>
+  {f'<p class="sub">Signal: {reason}</p>' if reason else ''}
 </div>
         """,
         unsafe_allow_html=True,
@@ -966,82 +974,69 @@ def passes_skill_refine(row, selected_skills):
     return True
 
 
-def _final_score_css_class(score):
-    try:
-        s = int(score)
-    except (TypeError, ValueError):
-        return "ats-score-final--mid"
-    if s >= 75:
-        return "ats-score-final--high"
-    if s >= 45:
-        return "ats-score-final--mid"
-    return "ats-score-final--low"
-
-
 def render_profile_card(item, rank, final_display_score):
-    """LinkedIn / ATS-style card: bold name, location & tenure, skills, traffic-light scores, JD gaps."""
+    """ATS candidate card — fixed layout for scanability (matches common ATS tools)."""
     exp = item.get("explainability") or {}
-    skills = item.get("skills", []) or []
-    pills = "".join(
-        f'<span class="ats-skill-pill">{html.escape(str(s))}</span>' for s in skills[:10]
-    )
-    if len(skills) > 10:
-        pills += f'<span style="color:#6b6e8c;font-size:0.78rem;"> +{len(skills) - 10} more</span>'
     loc_line = html.escape(str(item.get("location", "")))
     title_line = html.escape(str(item.get("title", "")))
     name_line = html.escape(str(item.get("name", "")))
-    sum_line = html.escape(str(item.get("candidate_summary", ""))[:200])
+    sum_line = html.escape(str(item.get("candidate_summary", ""))[:220])
     yr = int(item.get("experience_years", 0) or 0)
     jmin = exp.get("jd_min_years", 0)
     jmax = exp.get("jd_max_years", 0)
     if jmin and jmax:
-        jd_yr_txt = f"{jmin}–{jmax} yrs (JD)"
+        jd_yr_txt = f"JD asks {jmin}–{jmax} yrs"
     elif jmin:
-        jd_yr_txt = f"{jmin}+ yrs (JD)"
+        jd_yr_txt = f"JD asks {jmin}+ yrs"
     else:
-        jd_yr_txt = "JD band open"
-    final_cls = _final_score_css_class(final_display_score)
+        jd_yr_txt = "JD experience band open"
     match_s = item.get("match_score", "—")
     interest_s = item.get("interest_score", "—")
     match_c = _traffic_color(match_s)
     interest_c = _traffic_color(interest_s)
+    final_c = _traffic_color(final_display_score)
     matched_must = exp.get("matched_must_have") or []
     missing_must = exp.get("missing_must_have") or []
-    matched_txt = _format_skill_phrase(matched_must) if matched_must else "— (no JD must-haves or none matched)"
-    missing_txt = _format_skill_phrase(missing_must[:10]) if missing_must else "—"
-    if missing_must and len(missing_must) > 10:
-        missing_txt += f" (+{len(missing_must) - 10} more)"
+    matched_txt = _format_skill_phrase(matched_must) if matched_must else "—"
+    missing_txt = _format_skill_phrase(missing_must[:12]) if missing_must else "—"
+    if missing_must and len(missing_must) > 12:
+        missing_txt += f" (+{len(missing_must) - 12} more)"
     loc_fit = exp.get("location_fit_pct", "—")
     exp_fit = exp.get("experience_fit_pct", "—")
+    yr_warn = ""
+    if jmin and yr < jmin:
+        yr_warn = f'<p style="margin:8px 0 0 0;color:#FBBF24;font-size:0.82rem;">⚠ Fewer years than JD minimum ({yr} vs {jmin}+) — scoring reflects this.</p>'
     card = f"""
 <div class="ats-card">
   <div class="ats-section-title">Rank #{rank} · {html.escape(jd_yr_txt)}</div>
-  <div class="ats-candidate-name" style="font-size:1.45rem;font-weight:800;letter-spacing:-0.02em;line-height:1.2;margin-bottom:6px;">{name_line}</div>
-  <div style="color:#A0A3BD;font-size:0.92rem;font-weight:600;margin-bottom:8px;">{title_line}</div>
-  <div style="color:#A0A3BD;font-size:0.95rem;margin-bottom:12px;line-height:1.5;">
-    <strong style="color:#FFFFFF;">Experience:</strong> {yr} yrs
-    &nbsp;·&nbsp; <strong style="color:#FFFFFF;">Location:</strong> {loc_line}<br/>
-    <span style="font-size:0.85rem;">Loc alignment <strong style="color:#4F8EF7;">{loc_fit}</strong>% · Exp alignment <strong style="color:#4F8EF7;">{exp_fit}</strong>%</span>
+  <div style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;color:#FFFFFF;line-height:1.2;margin-bottom:4px;">👤 {name_line}</div>
+  <div style="color:#A0A3BD;font-size:0.88rem;margin-bottom:10px;">{title_line}</div>
+  <div style="color:#FFFFFF;font-size:1rem;font-weight:600;margin-bottom:16px;line-height:1.5;">
+    📍 {loc_line} &nbsp;|&nbsp; ⏳ {yr} yrs
   </div>
-  <div class="ats-section-title" style="margin-top:4px;">Profile skills</div>
-  <div style="margin-bottom:14px;">{pills or '<span style="color:#6b6e8c;">No skills listed</span>'}</div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px 28px;margin-bottom:14px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);">
-    <div><span style="color:#A0A3BD;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Match score</span><br/>
-      <span style="font-size:1.5rem;font-weight:800;color:{match_c};">{match_s}</span></div>
-    <div><span style="color:#A0A3BD;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Interest score</span><br/>
-      <span style="font-size:1.5rem;font-weight:800;color:{interest_c};">{interest_s}</span></div>
-    <div><span style="color:#A0A3BD;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Final</span><br/>
-      <span class="ats-score-final {final_cls}" style="font-size:1.5rem;">{final_display_score}</span></div>
+  <div style="margin-bottom:8px;font-size:1.02rem;">
+    <span style="color:#FFFFFF;font-weight:600;">Match Score:</span>
+    <span style="color:{match_c};font-weight:800;font-size:1.35rem;"> {match_s}</span>
   </div>
-  <div style="font-size:0.92rem;color:#FFFFFF;line-height:1.55;margin-bottom:6px;">
-    <span style="color:#22C55E;">✔</span> <strong>Matched (JD must-have):</strong>
-    <span style="color:#A0A3BD;">{matched_txt}</span>
+  <div style="margin-bottom:14px;font-size:1.02rem;">
+    <span style="color:#FFFFFF;font-weight:600;">Interest Score:</span>
+    <span style="color:{interest_c};font-weight:800;font-size:1.35rem;"> {interest_s}</span>
   </div>
-  <div style="font-size:0.92rem;color:#FFFFFF;line-height:1.55;margin-bottom:8px;">
-    <span style="color:#EF4444;">✕</span> <strong>Missing (must-have):</strong>
-    <span style="color:#A0A3BD;">{missing_txt}</span>
+  <div style="margin-bottom:16px;font-size:1rem;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);">
+    <span style="color:#FFFFFF;font-weight:600;">Final score:</span>
+    <span style="color:{final_c};font-weight:800;font-size:1.35rem;"> {final_display_score}</span>
+    <span style="color:#6b6e8c;font-size:0.78rem;margin-left:8px;">(exp fit {exp_fit}% · loc fit {loc_fit}%)</span>
   </div>
-  <div style="font-size:0.86rem;color:#6b6e8c;line-height:1.5;">{sum_line}</div>
+  <div style="font-size:0.98rem;line-height:1.55;margin-bottom:8px;">
+    <span style="color:#22C55E;">✔</span> <span style="color:#FFFFFF;font-weight:600;">Matched Skills:</span>
+    <span style="color:#A0A3BD;"> {matched_txt}</span>
+  </div>
+  <div style="font-size:0.98rem;line-height:1.55;margin-bottom:10px;">
+    <span style="color:#EF4444;">❌</span> <span style="color:#FFFFFF;font-weight:600;">Missing Skills:</span>
+    <span style="color:#A0A3BD;"> {missing_txt}</span>
+  </div>
+  {yr_warn}
+  <div style="font-size:0.84rem;color:#6b6e8c;line-height:1.45;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">{sum_line}</div>
 </div>
 """
     st.markdown(card, unsafe_allow_html=True)
@@ -1101,6 +1096,7 @@ st.sidebar.caption(f"Interest weight: {interest_weight_pct}%")
 min_final_threshold = st.sidebar.slider("Min final score", 0, 100, 0, 5)
 st.sidebar.divider()
 st.sidebar.subheader("ATS filters")
+st.sidebar.caption("Filter by experience, required skill, and location.")
 min_exp_filter = st.sidebar.number_input("Minimum experience (years)", 0, 30, 0)
 max_exp_filter = st.sidebar.number_input("Maximum experience (years)", 0, 30, 30)
 filter_skill = st.sidebar.text_input("Required skill (contains)", placeholder="e.g. Python")
@@ -1352,23 +1348,25 @@ if results:
     if not filtered_display:
         st.warning("No candidates match your sidebar filters. Clear filters or widen experience range.")
 
-    avg_m = avg_i = 0.0
+    avg_m = avg_i = avg_f = 0.0
     top = None
     top_skill = "—"
     if filtered_display:
         avg_m = sum(r["match_score"] for r in filtered_display) / len(filtered_display)
         avg_i = sum(r["interest_score"] for r in filtered_display) / len(filtered_display)
+        avg_f = sum(display_score(r) for r in filtered_display) / len(filtered_display)
         top = max(filtered_display, key=lambda x: display_score(x))
         top_skill = _top_skill_in_rows(filtered_display)
 
-    st.markdown("### Dashboard summary")
-    st.caption("Snapshot of this run · sidebar filters shape “In view” and averages below.")
-    d1, d2, d3, d4, d5 = st.columns(5)
-    d1.metric("Total analyzed", len(results))
+    st.markdown("### Summary dashboard")
+    st.caption("Data snapshot for this run · “In view” follows sidebar ATS filters.")
+    d1, d2, d3, d4, d5, d6 = st.columns(6)
+    d1.metric("Total candidates", len(results))
     d2.metric("In view", len(filtered_display))
     d3.metric("Avg match", round(avg_m, 1) if filtered_display else "—")
     d4.metric("Avg interest", round(avg_i, 1) if filtered_display else "—")
-    d5.metric("Top skill (view)", str(top_skill)[:24] + ("…" if len(str(top_skill)) > 24 else ""))
+    d5.metric("Avg final (view)", round(avg_f, 1) if filtered_display else "—")
+    d6.metric("Top skill", str(top_skill)[:20] + ("…" if len(str(top_skill)) > 20 else ""))
 
     if filtered_display:
         render_top_candidate_insight(filtered_display, feedback, jd_data)
@@ -1378,7 +1376,7 @@ if results:
         if filtered_display:
             csv_bytes = _ensure_download_bytes(results_to_csv(filtered_display))
             st.download_button(
-                "Download Shortlist",
+                "Download CSV",
                 data=csv_bytes,
                 file_name="talentscout_shortlist.csv",
                 mime="text/csv",
