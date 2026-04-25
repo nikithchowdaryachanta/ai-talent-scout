@@ -27,20 +27,68 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
     html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
     .block-container { padding-top: 1.25rem; padding-bottom: 2.5rem; max-width: 1200px; }
-    div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1) {
+
+    /* App shell: soft gray instead of stark white */
+    [data-testid="stAppViewContainer"] > .main {
+        background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+    }
+    section[data-testid="stMain"] > div {
+        background: transparent !important;
+    }
+
+    /* Hero: only the first title block (do not style global paragraphs — breaks tabs) */
+    div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1:first-child) {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-        border-radius: 16px; padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+        border-radius: 16px; padding: 1.5rem 1.75rem; margin-bottom: 1.25rem;
         border: 1px solid rgba(148,163,184,0.25);
     }
-    h1 { color: #f8fafc !important; font-weight: 700 !important; letter-spacing: -0.02em; }
-    h1 + div p, h1 ~ div p { color: #cbd5e1 !important; }
+    div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stMarkdown"] > h1:first-child) h1 {
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+    }
+
     .metric-card {
         background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
         padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
     }
-    div[data-baseweb="tab-highlight"] { background-color: #0ea5e9 !important; }
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; background: #f1f5f9; padding: 6px; border-radius: 12px; }
-    .stTabs [data-baseweb="tab"] { border-radius: 8px; }
+
+    /* Tabs: high contrast labels (selected vs unselected) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        background-color: #cbd5e1 !important;
+        padding: 8px 10px !important;
+        border-radius: 12px;
+        border: 1px solid #94a3b8;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        color: #0f172a !important;
+        background-color: transparent !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #0284c7 !important;
+        color: #ffffff !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        visibility: hidden;
+    }
+    /* Tab panel content */
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 1rem;
+        color: #0f172a !important;
+    }
+    .stTabs button[role="tab"] {
+        color: #0f172a !important;
+    }
+    .stTabs button[role="tab"][aria-selected="true"] {
+        color: #ffffff !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -528,8 +576,8 @@ for key, default in [
 # Header
 # -----------------------------
 st.markdown("# TalentScout AI")
-st.markdown(
-    "**Production-grade talent intelligence** — explainable matching, resume ingestion, "
+st.caption(
+    "Production-grade talent intelligence — explainable matching, resume ingestion, "
     "ATS pipeline, analytics, and JD coaching in one workspace."
 )
 
