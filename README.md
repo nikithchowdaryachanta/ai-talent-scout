@@ -3,11 +3,18 @@
 TalentScout AI helps recruiters move from a raw Job Description (JD) to an actionable ranked shortlist quickly.
 
 It automates:
-- JD parsing into structured requirements
+- JD parsing into structured requirements (including work mode hints)
 - Candidate discovery and pre-filtering
-- Explainable match scoring
-- Simulated recruiter outreach conversation
-- Interest scoring
+- **Explainable AI**: skill overlap %, experience fit %, location compatibility %, domain notes, and narrative reasoning
+- **Resume PDF ingestion**: upload PDFs, extract text, LLM-structured profiles (no static pool required)
+- **Multi-turn outreach simulation** (8 messages) with structured signals (enthusiasm, availability, self-assessed fit)
+- Interest scoring from that simulation
+- **ATS-style pipeline** stages: Applied → Screened → Shortlisted → Interviewed → Selected
+- **Search & filters**: skills, title, location, experience band, remote-only
+- **Recruitment analytics**: top skills, experience buckets, geography distribution
+- **JD optimization coach**: clarity score and actionable suggestions
+- **Recruiter feedback loop**: approve / reject adjusts displayed ranking (demo learning nudge)
+- **Export**: CSV and PDF shortlist report
 - Final ranked shortlist using weighted Match + Interest scores
 
 ## Live App
@@ -52,7 +59,16 @@ flowchart TD
     G --> J[Weighted Rank Engine]
     I --> J
     J --> K[Ranked Shortlist with Explanations]
+    K --> L[ATS Pipeline and Exports]
+    B --> M[JD Coach and Suggestions]
 ```
+
+### Extended scoring (high level)
+
+- **Match score** blends must-have overlap, nice-to-have overlap, experience vs JD minimum, and location/work-mode fit, then applies a small LLM adjustment (-10..+10) with a transparent narrative.
+- **Interest score** comes from a structured JSON response after an 8-turn simulated conversation.
+- **Final score** = `match_weight * Match + interest_weight * Interest` (sidebar sliders).
+- **Recruiter approve/reject** applies a ±3 display nudge on final score for the same session (simulated feedback loop).
 
 ## Tech Stack
 
@@ -60,6 +76,9 @@ flowchart TD
 - Streamlit
 - Google Generative AI (Gemini)
 - python-dotenv
+- **pypdf** — PDF text extraction for resumes
+- **fpdf2** — PDF export for shortlists
+- **pandas** — analytics charts
 
 ## Local Setup
 
