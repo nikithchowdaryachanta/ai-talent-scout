@@ -827,9 +827,9 @@ if results:
                     st.rerun()
                 vote = feedback.get(item["name"])
                 if vote == 1:
-                    st.success("Feedback: strong fit — future runs bias this profile positively (+3 final).")
+                    st.success("Feedback: strong fit — ranked score nudged +3 in this session (re-run agent to refresh base scores).")
                 elif vote == -1:
-                    st.warning("Feedback: poor fit — future runs bias down (-3 final).")
+                    st.warning("Feedback: poor fit — ranked score nudged −3 in this session (re-run agent to refresh base scores).")
                 st.divider()
 
     with tabs[1]:
